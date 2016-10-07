@@ -1,0 +1,23 @@
+language: go
+sudo: required
+
+services:
+  - docker
+
+go:
+  - tip
+
+before_install:
+  - docker pull jenkins:2.7.4
+  - docker run -d --name=jenkins -p 8080:8080 jenkins:2.7.4
+  - sleep 15
+  - docker inspect -f {{.State.Running}} jenkins | grep -q true
+
+install:
+  - go get github.com/axw/gocov/gocov
+  - go get github.com/mattn/goveralls
+  - go get github.com/stretchr/testify/assert
+
+script:
+    # go test --race -v ./...
+    - $HOME/gopath/bin/goveralls -service=travis-pro -repotoken $COVERALLS_TOKEN

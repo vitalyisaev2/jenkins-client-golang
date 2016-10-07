@@ -3,7 +3,6 @@ package jenkins
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/cookiejar"
 )
@@ -14,29 +13,18 @@ type Jenkins interface {
 }
 
 type jenkinsImpl struct {
-	client  *http.Client
-	baseurl string
+	client *http.Client
+	rb     *requestBuilder
 	//username string
 	//password string
-}
-
-func (j *jenkinsImpl) newJSONRequest(method string, route string, body io.Reader) (*http.Request, error) {
-	URL := fmt.Sprintf("%s/%s", j.baseurl, route)
-	req, err := http.NewRequest(method, URL, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Content-Type", "application/xml")
-	return req, nil
 }
 
 func (j *jenkinsImpl) getJSON(route string, responseReceiver APIResponse) error {
 	var err error
 	var req *http.Request
 	var resp *http.Response
-	defer resp.Body.Close()
 
-	req, err = j.newJSONRequest("GET", route, nil)
+	req, err = j.rb.newJSONRequest("GET", route, nil)
 	if err != nil {
 		return err
 	}
@@ -44,6 +32,12 @@ func (j *jenkinsImpl) getJSON(route string, responseReceiver APIResponse) error 
 	resp, err = j.client.Do(req)
 	if err != nil {
 		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		location, _ := resp.Location()
+		return fmt.Errorf("%v: %s", location, resp.Status)
 	}
 
 	err = json.NewDecoder(resp.Body).Decode(responseReceiver)
@@ -67,12 +61,13 @@ func (j *jenkinsImpl) RootInfo() <-chan *Result {
 }
 
 // NewJenkins initialises an entrypoint for Jenkins API
-func NewJenkins(baseurl string, username string, password string) (Jenkins, error) {
+func NewJenkins(baseURL string, username string, password string) (Jenkins, error) {
 	var (
 		err       error
 		cookieJar *cookiejar.Jar
 		transport *http.Transport
 		client    *http.Client
+		rb        *requestBuilder
 		jenkins   *jenkinsImpl
 	)
 
@@ -87,9 +82,23 @@ func NewJenkins(baseurl string, username string, password string) (Jenkins, erro
 		return nil, err
 	}
 
-	client = &http.Client{Transport: transport, Jar: cookieJar}
+	client = &http.Client{
+		Transport: transport,
+		Jar:       cookieJar,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			req.SetBasicAuth(username, password)
+			return nil
+		},
+	}
 
-	jenkins = &jenkinsImpl{client, baseurl}
+	rb = &requestBuilder{baseURL, username, password}
+
+	jenkins = &jenkinsImpl{client, rb}
 
 	return jenkins, nil
+}
+
+func redirectPolicyFunc(req *http.Request, via []*http.Request) error {
+
+	return nil
 }
