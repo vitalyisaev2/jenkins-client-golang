@@ -1,16 +1,16 @@
 package jenkins
 
-// Response ...
+// Result is a common interface for API responses
+// TODO: is it necessary at all
 type Result interface{}
 
-// ResultRoot ...
+// ResultRoot represents common information about Jenkins node
+// route: /api/json
 type ResultRoot struct {
 	Response *responseRoot
 	Error    error
 }
 
-// apiResponseRoot represents common information about Jenkins node
-// route: /api/json
 type responseRoot struct {
 	AssignedLabels  []struct{}  `json:"assignedLabels"`
 	Mode            string      `json:"mode"`
