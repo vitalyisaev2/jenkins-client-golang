@@ -11,13 +11,12 @@ import (
 
 var jenkinsAdminPassword string
 
-// Get admin password
+// Get admin password for test purposes
 func init() {
 	out, err := exec.Command("docker", "exec", "jenkins", "cat", "/var/jenkins_home/secrets/initialAdminPassword").Output()
 	if err != nil {
 		log.Fatal(err)
 	}
-	// Strip \n
 	jenkinsAdminPassword = string(out[:len(out)-1])
 	log.Printf("jenkinsAdminPassword captured: %s\n", jenkinsAdminPassword)
 }
@@ -30,5 +29,6 @@ func TestInit(t *testing.T) {
 	result := <-api.RootInfo()
 	assert.NotNil(t, result)
 	assert.NotNil(t, result.Response)
+	assert.NotEqual(t, 0, result.Response.NumExecutors)
 	assert.Nil(t, result.Error)
 }

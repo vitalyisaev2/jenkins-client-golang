@@ -9,17 +9,15 @@ import (
 
 // Jenkins is an access point to Jenkins API
 type Jenkins interface {
-	RootInfo() <-chan *Result
+	RootInfo() <-chan *ResultRoot
 }
 
 type jenkinsImpl struct {
 	client *http.Client
 	rb     *requestBuilder
-	//username string
-	//password string
 }
 
-func (j *jenkinsImpl) getJSON(route string, responseReceiver APIResponse) error {
+func (j *jenkinsImpl) getJSON(route string, responseReceiver Result) error {
 	var err error
 	var req *http.Request
 	var resp *http.Response
@@ -33,7 +31,10 @@ func (j *jenkinsImpl) getJSON(route string, responseReceiver APIResponse) error 
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() error {
+		err := resp.Body.Close()
+		return err
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		location, _ := resp.Location()
@@ -44,16 +45,16 @@ func (j *jenkinsImpl) getJSON(route string, responseReceiver APIResponse) error 
 	return err
 }
 
-func (j *jenkinsImpl) RootInfo() <-chan *Result {
-	var responseReceiver APIResponseRoot
-	ch := make(chan *Result)
+func (j *jenkinsImpl) RootInfo() <-chan *ResultRoot {
+	var responseReceiver responseRoot
+	ch := make(chan *ResultRoot)
 	go func() {
 		defer close(ch)
 		err := j.getJSON("/", &responseReceiver)
 		if err != nil {
-			ch <- &Result{nil, err}
+			ch <- &ResultRoot{nil, err}
 		} else {
-			ch <- &Result{responseReceiver, nil}
+			ch <- &ResultRoot{&responseReceiver, nil}
 		}
 	}()
 
@@ -96,9 +97,4 @@ func NewJenkins(baseURL string, username string, password string) (Jenkins, erro
 	jenkins = &jenkinsImpl{client, rb}
 
 	return jenkins, nil
-}
-
-func redirectPolicyFunc(req *http.Request, via []*http.Request) error {
-
-	return nil
 }
