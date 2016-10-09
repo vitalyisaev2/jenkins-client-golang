@@ -10,6 +10,7 @@ import (
 )
 
 var jenkinsAdminPassword string
+var api jenkins.Jenkins
 
 // Get admin password for test purposes
 func init() {
@@ -22,7 +23,8 @@ func init() {
 }
 
 func TestInit(t *testing.T) {
-	api, err := jenkins.NewJenkins("http://localhost:8080", "admin", jenkinsAdminPassword)
+	var err error
+	api, err = jenkins.NewJenkins("http://localhost:8080", "admin", jenkinsAdminPassword, true)
 	assert.NotNil(t, api)
 	assert.Nil(t, err)
 
@@ -31,4 +33,27 @@ func TestInit(t *testing.T) {
 	assert.NotNil(t, result.Response)
 	assert.NotEqual(t, 0, result.Response.NumExecutors)
 	assert.Nil(t, result.Error)
+}
+
+func TestCreateJobAPI(t *testing.T) {
+	jobName := "test1"
+	jobConfig := []byte(`
+<project>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders/>
+  <publishers/>
+  <buildWrappers/>
+</project>
+`)
+	err := <-api.JobCreate(jobName, jobConfig)
+	assert.Nil(t, err)
+
 }

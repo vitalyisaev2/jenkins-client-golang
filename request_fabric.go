@@ -38,6 +38,7 @@ func (rf *requestFabric) newURLString(route string, format jenkinsAPIFormat) str
 	return URL
 }
 
+// Creates arbitrary HTTP Request
 func (rf *requestFabric) newHTTPRequest(apiRequest *jenkinsAPIRequest) (*http.Request, error) {
 	// Create URL base
 	URL := rf.newURLString(apiRequest.route, apiRequest.format)
@@ -60,20 +61,13 @@ func (rf *requestFabric) newHTTPRequest(apiRequest *jenkinsAPIRequest) (*http.Re
 	return httpRequest, nil
 }
 
-func (rf *requestFabric) newJSONRequest(apiRequest *jenkinsAPIRequest) (*http.Request, error) {
-	httpRequest, err := rf.newHTTPRequest(apiRequest)
+// Creates new HTTP Request used for crumb generation
+func (rf *requestFabric) newCrumbRequest() (*http.Request, error) {
+	URL := rf.newURLString("/crumbIssuer", jenkinsAPIFormatJSON)
+	httpRequest, err := http.NewRequest("GET", URL, nil)
 	if err != nil {
 		return nil, err
 	}
-	httpRequest.Header.Add("Content-Type", "application/json")
-	return httpRequest, nil
-}
-
-func (rf *requestFabric) newXMLRequest(apiRequest *jenkinsAPIRequest) (*http.Request, error) {
-	httpRequest, err := rf.newHTTPRequest(apiRequest)
-	if err != nil {
-		return nil, err
-	}
-	httpRequest.Header.Add("Content-Type", "application/xml")
+	httpRequest.SetBasicAuth(rf.username, rf.password)
 	return httpRequest, nil
 }

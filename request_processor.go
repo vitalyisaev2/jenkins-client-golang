@@ -1,8 +1,10 @@
 package jenkins
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
 )
@@ -10,18 +12,72 @@ import (
 type requestProcessor struct {
 	client *http.Client
 	fabric *requestFabric
+	debug  bool
 }
 
-// HTTP method GET
 func (processor *requestProcessor) getJSON(apiRequest *jenkinsAPIRequest, receiver Result) error {
 	var err error
 	var httpRequest *http.Request
-	var httpResponse *http.Response
 
-	httpRequest, err = processor.fabric.newJSONRequest(apiRequest)
+	httpRequest, err = processor.fabric.newHTTPRequest(apiRequest)
 	if err != nil {
 		return err
 	}
+	httpRequest.Header.Add("Content-Type", "application/json")
+
+	return processor.processRequest(httpRequest, receiver)
+}
+
+func (processor *requestProcessor) postXML(apiRequest *jenkinsAPIRequest, receiver Result) error {
+	var err error
+	var httpRequest *http.Request
+
+	httpRequest, err = processor.fabric.newHTTPRequest(apiRequest)
+	if err != nil {
+		return err
+	}
+
+	err = processor.setCrumbs(httpRequest)
+	if err != nil {
+		return err
+	}
+
+	httpRequest.Header.Add("Content-Type", "application/xml")
+
+	return processor.processRequest(httpRequest, receiver)
+}
+
+// Make HTTP Request match Jenkins CSRF protection requirements (enabled by default in 2.x)
+func (processor *requestProcessor) setCrumbs(httpRequest *http.Request) error {
+	var err error
+	var crumbRequest *http.Request
+
+	crumbRequest, err = processor.fabric.newCrumbRequest()
+	if err != nil {
+		return err
+	}
+	receiver := make(map[string]string)
+
+	err = processor.processRequest(crumbRequest, &receiver)
+	if err != nil {
+		return err
+	}
+
+	if _, ok := receiver["crumbRequestField"]; !ok {
+		return fmt.Errorf("setCrumbs: %v has no field 'crumbRequestField'", receiver)
+	}
+	if _, ok := receiver["crumb"]; !ok {
+		return fmt.Errorf("setCrumbs: %v has no field 'crumbRequestField'", receiver)
+	}
+
+	httpRequest.Header.Add(receiver["crumbRequestField"], receiver["crumb"])
+	return nil
+}
+
+// Enqueue HTTP request to client
+func (processor *requestProcessor) processRequest(httpRequest *http.Request, receiver Result) error {
+	var err error
+	var httpResponse *http.Response
 
 	httpResponse, err = processor.client.Do(httpRequest)
 	if err != nil {
@@ -29,28 +85,40 @@ func (processor *requestProcessor) getJSON(apiRequest *jenkinsAPIRequest, receiv
 	}
 	defer httpResponse.Body.Close()
 
+	httpRequestURL := httpRequest.URL.String()
 	if httpResponse.StatusCode != http.StatusOK {
-		location, _ := httpResponse.Location()
-		return fmt.Errorf("%v: %s", location, httpResponse.Status)
+		return fmt.Errorf("%v: %s", httpRequestURL, httpResponse.Status)
 	}
 
-	err = json.NewDecoder(httpResponse.Body).Decode(receiver)
+	switch processor.debug {
+	case true:
+		{
+			dumpedBody, _ := ioutil.ReadAll(httpResponse.Body)
+			dumpedBodyReader := bytes.NewBuffer(dumpedBody)
+			fmt.Printf("URL: %s ResponseBody: %s\n", httpRequestURL, string(dumpedBody))
+			switch receiver {
+			case nil:
+				return nil
+			default:
+				err = json.NewDecoder(dumpedBodyReader).Decode(receiver)
+			}
+		}
+	case false:
+		{
+			switch receiver {
+			case nil:
+				return nil
+			default:
+				err = json.NewDecoder(httpResponse.Body).Decode(receiver)
+			}
+		}
+
+	}
 	return err
 }
 
-//HTTP method Post
-//func (processor *requestProcessor) postXML(apiRequest *jenkinsAPIRequest, receiver Result) error {
-//var err error
-//var httpRequest *http.Request
-//var httpResponse *http.Response
-
-//httpRequest, err = processor.fabric.newJSONRequest(apiRequest)
-//if err != nil {
-//return err
-//}
-//}
-
-func newRequestProcessor(baseURL string, username string, password string) (*requestProcessor, error) {
+// Creates new wrapper around standard http.Client
+func newRequestProcessor(baseURL string, username string, password string, debug bool) (*requestProcessor, error) {
 
 	var (
 		err       error
@@ -83,5 +151,5 @@ func newRequestProcessor(baseURL string, username string, password string) (*req
 	// requestFabric creates various requests
 	fabric = &requestFabric{baseURL, username, password}
 
-	return &requestProcessor{client, fabric}, nil
+	return &requestProcessor{client, fabric, debug}, nil
 }
