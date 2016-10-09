@@ -12,33 +12,43 @@ type requestProcessor struct {
 	fabric *requestFabric
 }
 
-func (processor *requestProcessor) getJSON(route string, responseReceiver Result) error {
+// HTTP method GET
+func (processor *requestProcessor) getJSON(apiRequest *jenkinsAPIRequest, receiver Result) error {
 	var err error
-	var req *http.Request
-	var resp *http.Response
+	var httpRequest *http.Request
+	var httpResponse *http.Response
 
-	req, err = processor.fabric.newJSONRequest("GET", route, nil)
+	httpRequest, err = processor.fabric.newJSONRequest(apiRequest)
 	if err != nil {
 		return err
 	}
 
-	resp, err = processor.client.Do(req)
+	httpResponse, err = processor.client.Do(httpRequest)
 	if err != nil {
 		return err
 	}
-	defer func() error {
-		err = resp.Body.Close()
-		return err
-	}()
+	defer httpResponse.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		location, _ := resp.Location()
-		return fmt.Errorf("%v: %s", location, resp.Status)
+	if httpResponse.StatusCode != http.StatusOK {
+		location, _ := httpResponse.Location()
+		return fmt.Errorf("%v: %s", location, httpResponse.Status)
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(responseReceiver)
+	err = json.NewDecoder(httpResponse.Body).Decode(receiver)
 	return err
 }
+
+//HTTP method Post
+//func (processor *requestProcessor) postXML(apiRequest *jenkinsAPIRequest, receiver Result) error {
+//var err error
+//var httpRequest *http.Request
+//var httpResponse *http.Response
+
+//httpRequest, err = processor.fabric.newJSONRequest(apiRequest)
+//if err != nil {
+//return err
+//}
+//}
 
 func newRequestProcessor(baseURL string, username string, password string) (*requestProcessor, error) {
 
