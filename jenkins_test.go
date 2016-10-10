@@ -47,16 +47,22 @@ func TestJobCreate(t *testing.T) {
 	jobName := "test1"
 	jobConfig := []byte(`
 <project>
+  <actions/>
+  <description></description>
   <keepDependencies>false</keepDependencies>
   <properties/>
   <scm class="hudson.scm.NullSCM"/>
-  <canRoam>false</canRoam>
+  <canRoam>true</canRoam>
   <disabled>false</disabled>
   <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
   <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
   <triggers/>
   <concurrentBuild>false</concurrentBuild>
-  <builders/>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>sleep 10;</command>
+    </hudson.tasks.Shell>
+  </builders>
   <publishers/>
   <buildWrappers/>
 </project>
@@ -75,6 +81,9 @@ func TestJobGet(t *testing.T) {
 	assert.Equal(t, jobName, result.Response.DisplayName)
 	assert.Equal(t, fmt.Sprintf("%s/job/%s/", baseURL, jobName), result.Response.URL)
 }
+
+//func TestJobBuild(t *testing.T) {
+//}
 
 func TestJobDelete(t *testing.T) {
 	jobName := "test1"

@@ -82,6 +82,7 @@ func (processor *processorImpl) processRequest(httpRequest *http.Request, receiv
 	var err error
 	var httpResponse *http.Response
 
+	// Set header preventing CSRF attacs if necessary
 	if setCrumbs {
 		err = processor.setCrumbs(httpRequest)
 		if err != nil {
@@ -96,7 +97,10 @@ func (processor *processorImpl) processRequest(httpRequest *http.Request, receiv
 	defer httpResponse.Body.Close()
 
 	httpRequestURL := httpRequest.URL.String()
-	if httpResponse.StatusCode != http.StatusOK {
+	switch httpResponse.StatusCode {
+	case http.StatusOK, http.StatusCreated:
+		break
+	default:
 		return fmt.Errorf("%v: %s", httpRequestURL, httpResponse.Status)
 	}
 
