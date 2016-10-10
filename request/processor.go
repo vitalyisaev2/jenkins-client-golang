@@ -4,14 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/vitalyisaev2/jenkins-client-golang/result"
 	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
+
+	"github.com/vitalyisaev2/jenkins-client-golang/result"
 )
 
 type Processor interface {
 	GetJSON(*JenkinsAPIRequest, result.Result) error
+	Post(*JenkinsAPIRequest, result.Result) error
 	PostXML(*JenkinsAPIRequest, result.Result) error
 }
 
@@ -30,6 +32,25 @@ func (processor *processorImpl) GetJSON(apiRequest *JenkinsAPIRequest, receiver 
 		return err
 	}
 	httpRequest.Header.Add("Content-Type", "application/json")
+
+	return processor.processRequest(httpRequest, receiver)
+}
+
+func (processor *processorImpl) Post(apiRequest *JenkinsAPIRequest, receiver result.Result) error {
+	var err error
+	var httpRequest *http.Request
+
+	httpRequest, err = processor.fb.newHTTPRequest(apiRequest)
+	if err != nil {
+		return err
+	}
+
+	err = processor.setCrumbs(httpRequest)
+	if err != nil {
+		return err
+	}
+
+	//httpRequest.Header.Add("Content-Type", "application/xml")
 
 	return processor.processRequest(httpRequest, receiver)
 }

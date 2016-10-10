@@ -8,16 +8,16 @@ import (
 // TODO: is it necessary at all
 type Result interface{}
 
-// ResultRoot represents common information about Jenkins node
+// Root represents common information about Jenkins node
 // route: /api/json
 type Root struct {
 	Response *response.Root
 	Error    error
 }
 
-// ResultCreateJob represents the result of job creation
-// route: /createItem?name=jobName
-type CreateJob struct {
+// Job represents the common job item existing on Jenkins
+// route: /job/jobName
+type Job struct {
 	Response *response.Job
 	Error    error
 }

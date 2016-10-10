@@ -2,7 +2,7 @@ package jenkins
 
 import (
 	"bytes"
-	"io"
+	"fmt"
 
 	"github.com/vitalyisaev2/jenkins-client-golang/request"
 	"github.com/vitalyisaev2/jenkins-client-golang/response"
@@ -13,6 +13,8 @@ import (
 type Jenkins interface {
 	RootInfo() <-chan *result.Root
 	JobCreate(string, []byte) <-chan error
+	JobGet(string) <-chan *result.Job
+	JobDelete(string) <-chan error
 }
 
 type jenkinsImpl struct {
@@ -23,6 +25,7 @@ type jenkinsImpl struct {
 func (j *jenkinsImpl) RootInfo() <-chan *result.Root {
 	var receiver response.Root
 	ch := make(chan *result.Root)
+
 	go func() {
 		defer close(ch)
 		apiRequest := request.JenkinsAPIRequest{
@@ -39,20 +42,16 @@ func (j *jenkinsImpl) RootInfo() <-chan *result.Root {
 			ch <- &result.Root{&receiver, nil}
 		}
 	}()
-
 	return ch
 }
 
-// JobCreate creates new job for a given name using the xml configuration dumped into slice of bytes
+// JobCreate creates new job for given name and xml configuration dumped into slice of bytes
 func (j *jenkinsImpl) JobCreate(jobName string, jobConfig []byte) <-chan error {
-	var body io.Reader
-
 	params := make(map[string]string)
 	params["name"] = jobName
-
-	body = bytes.NewBuffer(jobConfig)
-
+	body := bytes.NewBuffer(jobConfig)
 	ch := make(chan error)
+
 	go func() {
 		defer close(ch)
 		apiRequest := request.JenkinsAPIRequest{
@@ -67,7 +66,47 @@ func (j *jenkinsImpl) JobCreate(jobName string, jobConfig []byte) <-chan error {
 	return ch
 }
 
-// JobGet get
+// JobGet requests common job information for a given job name
+func (j *jenkinsImpl) JobGet(jobName string) <-chan *result.Job {
+	var receiver response.Job
+	ch := make(chan *result.Job)
+
+	go func() {
+		defer close(ch)
+		apiRequest := request.JenkinsAPIRequest{
+			Method:      "GET",
+			Route:       fmt.Sprintf("/job/%s", jobName),
+			Format:      request.JenkinsAPIFormatJSON,
+			Body:        nil,
+			QueryParams: nil,
+		}
+		err := j.processor.GetJSON(&apiRequest, &receiver)
+		if err != nil {
+			ch <- &result.Job{nil, err}
+		} else {
+			ch <- &result.Job{&receiver, nil}
+		}
+	}()
+	return ch
+}
+
+// JobDelete deletes the requested job
+func (j *jenkinsImpl) JobDelete(jobName string) <-chan error {
+	ch := make(chan error)
+
+	go func() {
+		defer close(ch)
+		apiRequest := request.JenkinsAPIRequest{
+			Method:      "POST",
+			Route:       fmt.Sprintf("/job/%s/doDelete", jobName),
+			Format:      request.JenkinsAPIFormatJSON,
+			Body:        nil,
+			QueryParams: nil,
+		}
+		ch <- j.processor.Post(&apiRequest, nil)
+	}()
+	return ch
+}
 
 // NewJenkins initialises an entrypoint for Jenkins API
 func NewJenkins(baseURL string, username string, password string, debug bool) (Jenkins, error) {

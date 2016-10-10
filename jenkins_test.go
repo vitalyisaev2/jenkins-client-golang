@@ -1,12 +1,19 @@
 package jenkins_test
 
 import (
+	"fmt"
 	"log"
 	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/vitalyisaev2/jenkins-client-golang"
+)
+
+const (
+	baseURL           string = "http://localhost:8080"
+	jenkinsAdminLogin string = "admin"
+	debug             bool   = false
 )
 
 var jenkinsAdminPassword string
@@ -24,18 +31,19 @@ func init() {
 
 func TestInit(t *testing.T) {
 	var err error
-	api, err = jenkins.NewJenkins("http://localhost:8080", "admin", jenkinsAdminPassword, true)
+	api, err = jenkins.NewJenkins(baseURL, jenkinsAdminLogin, jenkinsAdminPassword, debug)
 	assert.NotNil(t, api)
 	assert.Nil(t, err)
 
 	result := <-api.RootInfo()
 	assert.NotNil(t, result)
 	assert.NotNil(t, result.Response)
-	assert.NotEqual(t, 0, result.Response.NumExecutors)
 	assert.Nil(t, result.Error)
+
+	assert.NotEqual(t, 0, result.Response.NumExecutors)
 }
 
-func TestCreateJob(t *testing.T) {
+func TestJobCreate(t *testing.T) {
 	jobName := "test1"
 	jobConfig := []byte(`
 <project>
@@ -55,5 +63,21 @@ func TestCreateJob(t *testing.T) {
 `)
 	err := <-api.JobCreate(jobName, jobConfig)
 	assert.Nil(t, err)
+}
 
+func TestJobGet(t *testing.T) {
+	jobName := "test1"
+	result := <-api.JobGet(jobName)
+	assert.NotNil(t, result)
+	assert.NotNil(t, result.Response)
+	assert.Nil(t, result.Error)
+
+	assert.Equal(t, jobName, result.Response.DisplayName)
+	assert.Equal(t, fmt.Sprintf("%s/job/%s/", baseURL, jobName), result.Response.URL)
+}
+
+func TestJobDelete(t *testing.T) {
+	jobName := "test1"
+	err := <-api.JobDelete(jobName)
+	assert.Nil(t, err)
 }
