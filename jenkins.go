@@ -3,43 +3,47 @@ package jenkins
 import (
 	"bytes"
 	"io"
+
+	"github.com/vitalyisaev2/jenkins-client-golang/request"
+	"github.com/vitalyisaev2/jenkins-client-golang/response"
+	"github.com/vitalyisaev2/jenkins-client-golang/result"
 )
 
 // Jenkins is an access point to Jenkins API
 type Jenkins interface {
-	RootInfo() <-chan *ResultRoot
+	RootInfo() <-chan *result.Root
 	JobCreate(string, []byte) <-chan error
 }
 
 type jenkinsImpl struct {
-	processor *requestProcessor
+	processor request.Processor
 }
 
 // RootInfo returns basic information about the node that you've connected to
-func (j *jenkinsImpl) RootInfo() <-chan *ResultRoot {
-	var receiver ResponseRoot
-	ch := make(chan *ResultRoot)
+func (j *jenkinsImpl) RootInfo() <-chan *result.Root {
+	var receiver response.Root
+	ch := make(chan *result.Root)
 	go func() {
 		defer close(ch)
-		apiRequest := jenkinsAPIRequest{
-			method:      "GET",
-			route:       "",
-			format:      jenkinsAPIFormatJSON,
-			body:        nil,
-			queryParams: nil,
+		apiRequest := request.JenkinsAPIRequest{
+			Method:      "GET",
+			Route:       "",
+			Format:      request.JenkinsAPIFormatJSON,
+			Body:        nil,
+			QueryParams: nil,
 		}
-		err := j.processor.getJSON(&apiRequest, &receiver)
+		err := j.processor.GetJSON(&apiRequest, &receiver)
 		if err != nil {
-			ch <- &ResultRoot{nil, err}
+			ch <- &result.Root{nil, err}
 		} else {
-			ch <- &ResultRoot{&receiver, nil}
+			ch <- &result.Root{&receiver, nil}
 		}
 	}()
 
 	return ch
 }
 
-// JobCreate to create new job for a given name using the xml configuration dumped into byte slice
+// JobCreate creates new job for a given name using the xml configuration dumped into slice of bytes
 func (j *jenkinsImpl) JobCreate(jobName string, jobConfig []byte) <-chan error {
 	var body io.Reader
 
@@ -51,22 +55,24 @@ func (j *jenkinsImpl) JobCreate(jobName string, jobConfig []byte) <-chan error {
 	ch := make(chan error)
 	go func() {
 		defer close(ch)
-		apiRequest := jenkinsAPIRequest{
-			method:      "POST",
-			route:       "/createItem",
-			format:      jenkinsAPIFormatJSON,
-			body:        body,
-			queryParams: params,
+		apiRequest := request.JenkinsAPIRequest{
+			Method:      "POST",
+			Route:       "/createItem",
+			Format:      request.JenkinsAPIFormatJSON,
+			Body:        body,
+			QueryParams: params,
 		}
-		ch <- j.processor.postXML(&apiRequest, nil)
+		ch <- j.processor.PostXML(&apiRequest, nil)
 	}()
 	return ch
 }
 
+// JobGet get
+
 // NewJenkins initialises an entrypoint for Jenkins API
 func NewJenkins(baseURL string, username string, password string, debug bool) (Jenkins, error) {
 
-	processor, err := newRequestProcessor(baseURL, username, password, debug)
+	processor, err := request.NewProcessor(baseURL, username, password, debug)
 	if err != nil {
 		return nil, err
 	}

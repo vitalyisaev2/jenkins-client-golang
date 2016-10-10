@@ -1,25 +1,7 @@
-package jenkins
-
-// ResponseRoot represents common information about Jenkins node
-type ResponseRoot struct {
-	AssignedLabels  []struct{}  `json:"assignedLabels"`
-	Mode            string      `json:"mode"`
-	NodeDescription string      `json:"nodeDescription"`
-	NodeName        string      `json:"nodeName"`
-	NumExecutors    uint8       `json:"numExecutors"`
-	Jobs            []Job       `json:"jobs"`
-	OverallLoad     struct{}    `json:"overallLoad"`
-	PrimaryView     PrimaryView `json:"primaryView"`
-	QuietingDown    bool        `json:"quietingDown"`
-	SlaveAgentPort  uint32      `json:"slaveAgentPort"`
-	UnlabeledLoad   struct{}    `json:"unlabeledLoad"`
-	UseCrumbs       bool        `json:"useCrumbs"`
-	UseSecurity     bool        `json:"useSecurity"`
-	Views           []View      `json:"views"`
-}
+package response
 
 // ResponseJob represents the result of job API call
-type ResponseJob struct {
+type Job struct {
 	Actions            []interface{} `json:"actions"`
 	Buildable          bool          `json:"buildable"`
 	Builds             []JobBuild
@@ -28,7 +10,7 @@ type ResponseJob struct {
 	Description        string      `json:"description"`
 	DisplayName        string      `json:"displayName"`
 	DisplayNameOrNull  interface{} `json:"displayNameOrNull"`
-	DownstreamProjects []Job       `json:"downstreamProjects"`
+	DownstreamProjects []JobBrief  `json:"downstreamProjects"`
 	FirstBuild         JobBuild
 	HealthReport       []struct {
 		Description   string `json:"description"`
@@ -57,7 +39,7 @@ type ResponseJob struct {
 }
 
 // Job is a short representation of a common Jenkins item used in various API responses
-type Job struct {
+type JobBrief struct {
 	Name  string `json:"name"`
 	URL   string `json:"url"`
 	Color string `json:"color"`
@@ -67,16 +49,6 @@ type Job struct {
 type JobBuild struct {
 	Number int64
 	URL    string
-}
-
-// PrimaryView ???
-type PrimaryView struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
-
-// View ???
-type View struct {
 }
 
 // ParameterDefinition ???

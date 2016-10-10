@@ -1,25 +1,31 @@
-package jenkins
+package request
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/vitalyisaev2/jenkins-client-golang/result"
 	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
 )
 
-type requestProcessor struct {
+type Processor interface {
+	GetJSON(*JenkinsAPIRequest, result.Result) error
+	PostXML(*JenkinsAPIRequest, result.Result) error
+}
+
+type processorImpl struct {
 	client *http.Client
-	fabric *requestFabric
+	fb     *fabric
 	debug  bool
 }
 
-func (processor *requestProcessor) getJSON(apiRequest *jenkinsAPIRequest, receiver Result) error {
+func (processor *processorImpl) GetJSON(apiRequest *JenkinsAPIRequest, receiver result.Result) error {
 	var err error
 	var httpRequest *http.Request
 
-	httpRequest, err = processor.fabric.newHTTPRequest(apiRequest)
+	httpRequest, err = processor.fb.newHTTPRequest(apiRequest)
 	if err != nil {
 		return err
 	}
@@ -28,11 +34,11 @@ func (processor *requestProcessor) getJSON(apiRequest *jenkinsAPIRequest, receiv
 	return processor.processRequest(httpRequest, receiver)
 }
 
-func (processor *requestProcessor) postXML(apiRequest *jenkinsAPIRequest, receiver Result) error {
+func (processor *processorImpl) PostXML(apiRequest *JenkinsAPIRequest, receiver result.Result) error {
 	var err error
 	var httpRequest *http.Request
 
-	httpRequest, err = processor.fabric.newHTTPRequest(apiRequest)
+	httpRequest, err = processor.fb.newHTTPRequest(apiRequest)
 	if err != nil {
 		return err
 	}
@@ -48,11 +54,11 @@ func (processor *requestProcessor) postXML(apiRequest *jenkinsAPIRequest, receiv
 }
 
 // Make HTTP Request match Jenkins CSRF protection requirements (enabled by default in 2.x)
-func (processor *requestProcessor) setCrumbs(httpRequest *http.Request) error {
+func (processor *processorImpl) setCrumbs(httpRequest *http.Request) error {
 	var err error
 	var crumbRequest *http.Request
 
-	crumbRequest, err = processor.fabric.newCrumbRequest()
+	crumbRequest, err = processor.fb.newCrumbRequest()
 	if err != nil {
 		return err
 	}
@@ -75,7 +81,7 @@ func (processor *requestProcessor) setCrumbs(httpRequest *http.Request) error {
 }
 
 // Enqueue HTTP request to client
-func (processor *requestProcessor) processRequest(httpRequest *http.Request, receiver Result) error {
+func (processor *processorImpl) processRequest(httpRequest *http.Request, receiver result.Result) error {
 	var err error
 	var httpResponse *http.Response
 
@@ -118,14 +124,14 @@ func (processor *requestProcessor) processRequest(httpRequest *http.Request, rec
 }
 
 // Creates new wrapper around standard http.Client
-func newRequestProcessor(baseURL string, username string, password string, debug bool) (*requestProcessor, error) {
+func NewProcessor(baseURL string, username string, password string, debug bool) (Processor, error) {
 
 	var (
 		err       error
 		cookieJar *cookiejar.Jar
 		transport *http.Transport
 		client    *http.Client
-		fabric    *requestFabric
+		fb        *fabric
 	)
 
 	// Build custom http/client
@@ -149,7 +155,7 @@ func newRequestProcessor(baseURL string, username string, password string, debug
 	}
 
 	// requestFabric creates various requests
-	fabric = &requestFabric{baseURL, username, password}
+	fb = &fabric{baseURL, username, password}
 
-	return &requestProcessor{client, fabric, debug}, nil
+	return &processorImpl{client, fb, debug}, nil
 }

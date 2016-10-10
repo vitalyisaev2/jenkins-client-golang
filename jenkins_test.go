@@ -35,7 +35,7 @@ func TestInit(t *testing.T) {
 	assert.Nil(t, result.Error)
 }
 
-func TestCreateJobAPI(t *testing.T) {
+func TestCreateJob(t *testing.T) {
 	jobName := "test1"
 	jobConfig := []byte(`
 <project>
