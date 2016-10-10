@@ -11,6 +11,7 @@ import (
 	"github.com/vitalyisaev2/jenkins-client-golang/result"
 )
 
+// Processor wraps routines related to the HTTP layer of interaction with Jenkins API
 type Processor interface {
 	GetJSON(*JenkinsAPIRequest, result.Result) error
 	Post(*JenkinsAPIRequest, result.Result) error
@@ -24,54 +25,29 @@ type processorImpl struct {
 }
 
 func (processor *processorImpl) GetJSON(apiRequest *JenkinsAPIRequest, receiver result.Result) error {
-	var err error
-	var httpRequest *http.Request
-
-	httpRequest, err = processor.fb.newHTTPRequest(apiRequest)
+	httpRequest, err := processor.fb.newHTTPRequest(apiRequest)
 	if err != nil {
 		return err
 	}
 	httpRequest.Header.Add("Content-Type", "application/json")
-
-	return processor.processRequest(httpRequest, receiver)
+	return processor.processRequest(httpRequest, receiver, true)
 }
 
 func (processor *processorImpl) Post(apiRequest *JenkinsAPIRequest, receiver result.Result) error {
-	var err error
-	var httpRequest *http.Request
-
-	httpRequest, err = processor.fb.newHTTPRequest(apiRequest)
+	httpRequest, err := processor.fb.newHTTPRequest(apiRequest)
 	if err != nil {
 		return err
 	}
-
-	err = processor.setCrumbs(httpRequest)
-	if err != nil {
-		return err
-	}
-
-	//httpRequest.Header.Add("Content-Type", "application/xml")
-
-	return processor.processRequest(httpRequest, receiver)
+	return processor.processRequest(httpRequest, receiver, true)
 }
 
 func (processor *processorImpl) PostXML(apiRequest *JenkinsAPIRequest, receiver result.Result) error {
-	var err error
-	var httpRequest *http.Request
-
-	httpRequest, err = processor.fb.newHTTPRequest(apiRequest)
+	httpRequest, err := processor.fb.newHTTPRequest(apiRequest)
 	if err != nil {
 		return err
 	}
-
-	err = processor.setCrumbs(httpRequest)
-	if err != nil {
-		return err
-	}
-
 	httpRequest.Header.Add("Content-Type", "application/xml")
-
-	return processor.processRequest(httpRequest, receiver)
+	return processor.processRequest(httpRequest, receiver, true)
 }
 
 // Make HTTP Request match Jenkins CSRF protection requirements (enabled by default in 2.x)
@@ -85,7 +61,7 @@ func (processor *processorImpl) setCrumbs(httpRequest *http.Request) error {
 	}
 	receiver := make(map[string]string)
 
-	err = processor.processRequest(crumbRequest, &receiver)
+	err = processor.processRequest(crumbRequest, &receiver, false)
 	if err != nil {
 		return err
 	}
@@ -102,9 +78,16 @@ func (processor *processorImpl) setCrumbs(httpRequest *http.Request) error {
 }
 
 // Enqueue HTTP request to client
-func (processor *processorImpl) processRequest(httpRequest *http.Request, receiver result.Result) error {
+func (processor *processorImpl) processRequest(httpRequest *http.Request, receiver result.Result, setCrumbs bool) error {
 	var err error
 	var httpResponse *http.Response
+
+	if setCrumbs {
+		err = processor.setCrumbs(httpRequest)
+		if err != nil {
+			return err
+		}
+	}
 
 	httpResponse, err = processor.client.Do(httpRequest)
 	if err != nil {
@@ -144,7 +127,7 @@ func (processor *processorImpl) processRequest(httpRequest *http.Request, receiv
 	return err
 }
 
-// Creates new wrapper around standard http.Client
+// NewProcessor instantiates Processor - a wrapper for http.Client that aware about Jenkins stuff
 func NewProcessor(baseURL string, username string, password string, debug bool) (Processor, error) {
 
 	var (

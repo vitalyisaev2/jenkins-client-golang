@@ -108,6 +108,8 @@ func (j *jenkinsImpl) JobDelete(jobName string) <-chan error {
 	return ch
 }
 
+//
+
 // NewJenkins initialises an entrypoint for Jenkins API
 func NewJenkins(baseURL string, username string, password string, debug bool) (Jenkins, error) {
 
