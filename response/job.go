@@ -1,6 +1,6 @@
 package response
 
-// ResponseJob represents the result of job API call
+// Job represents the result of job API call
 type Job struct {
 	Actions            []interface{} `json:"actions"`
 	Buildable          bool          `json:"buildable"`
@@ -38,20 +38,20 @@ type Job struct {
 	URL              string      `json:"url"`
 }
 
-// Job is a short representation of a common Jenkins item used in various API responses
+// JobBrief is a short representation of a common Jenkins item used in various API responses
 type JobBrief struct {
 	Name  string `json:"name"`
 	URL   string `json:"url"`
 	Color string `json:"color"`
 }
 
-// JobBuild is a short representation of a common Jenkins build used in various API responses
+// JobBuildBrief is a short representation of a common Jenkins build used in various API responses
 type JobBuildBrief struct {
 	Number uint
 	URL    string
 }
 
-// ParameterDefinition ???
+// JobParameterDefinition ???
 type JobParameterDefinition struct {
 	DefaultParameterValue struct {
 		Name  string `json:"name"`

@@ -1,10 +1,7 @@
 package request
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
 
@@ -21,6 +18,7 @@ type Processor interface {
 type processorImpl struct {
 	client *http.Client
 	fb     *fabric
+	dm     *dumper
 	debug  bool
 }
 
@@ -30,7 +28,7 @@ func (processor *processorImpl) GetJSON(apiRequest *JenkinsAPIRequest, receiver 
 		return err
 	}
 	httpRequest.Header.Add("Content-Type", "application/json")
-	return processor.processRequest(httpRequest, receiver, true)
+	return processor.processRequest(httpRequest, receiver, apiRequest.DumpMethod, true)
 }
 
 func (processor *processorImpl) Post(apiRequest *JenkinsAPIRequest, receiver result.Result) error {
@@ -38,7 +36,7 @@ func (processor *processorImpl) Post(apiRequest *JenkinsAPIRequest, receiver res
 	if err != nil {
 		return err
 	}
-	return processor.processRequest(httpRequest, receiver, true)
+	return processor.processRequest(httpRequest, receiver, apiRequest.DumpMethod, true)
 }
 
 func (processor *processorImpl) PostXML(apiRequest *JenkinsAPIRequest, receiver result.Result) error {
@@ -47,7 +45,7 @@ func (processor *processorImpl) PostXML(apiRequest *JenkinsAPIRequest, receiver 
 		return err
 	}
 	httpRequest.Header.Add("Content-Type", "application/xml")
-	return processor.processRequest(httpRequest, receiver, true)
+	return processor.processRequest(httpRequest, receiver, apiRequest.DumpMethod, true)
 }
 
 // Make HTTP Request match Jenkins CSRF protection requirements (enabled by default in 2.x)
@@ -61,7 +59,7 @@ func (processor *processorImpl) setCrumbs(httpRequest *http.Request) error {
 	}
 	receiver := make(map[string]string)
 
-	err = processor.processRequest(crumbRequest, &receiver, false)
+	err = processor.processRequest(crumbRequest, &receiver, ResponseDumpDefaultJSON, false)
 	if err != nil {
 		return err
 	}
@@ -78,7 +76,7 @@ func (processor *processorImpl) setCrumbs(httpRequest *http.Request) error {
 }
 
 // Enqueue HTTP request to client
-func (processor *processorImpl) processRequest(httpRequest *http.Request, receiver result.Result, setCrumbs bool) error {
+func (processor *processorImpl) processRequest(httpRequest *http.Request, receiver result.Result, dumpMethod ResponseDumpMethod, setCrumbs bool) error {
 	var err error
 	var httpResponse *http.Response
 
@@ -90,45 +88,13 @@ func (processor *processorImpl) processRequest(httpRequest *http.Request, receiv
 		}
 	}
 
+	// Perform HTTP request
 	httpResponse, err = processor.client.Do(httpRequest)
 	if err != nil {
 		return err
 	}
-	defer httpResponse.Body.Close()
 
-	httpRequestURL := httpRequest.URL.String()
-	switch httpResponse.StatusCode {
-	case http.StatusOK, http.StatusCreated:
-		break
-	default:
-		return fmt.Errorf("%v: %s", httpRequestURL, httpResponse.Status)
-	}
-
-	switch processor.debug {
-	case true:
-		{
-			dumpedBody, _ := ioutil.ReadAll(httpResponse.Body)
-			dumpedBodyReader := bytes.NewBuffer(dumpedBody)
-			fmt.Printf("URL: %s ResponseBody: %s\n", httpRequestURL, string(dumpedBody))
-			switch receiver {
-			case nil:
-				return nil
-			default:
-				err = json.NewDecoder(dumpedBodyReader).Decode(receiver)
-			}
-		}
-	case false:
-		{
-			switch receiver {
-			case nil:
-				return nil
-			default:
-				err = json.NewDecoder(httpResponse.Body).Decode(receiver)
-			}
-		}
-
-	}
-	return err
+	return processor.dm.dump(httpResponse, receiver, dumpMethod)
 }
 
 // NewProcessor instantiates Processor - a wrapper for http.Client that aware about Jenkins stuff
@@ -140,6 +106,7 @@ func NewProcessor(baseURL string, username string, password string, debug bool) 
 		transport *http.Transport
 		client    *http.Client
 		fb        *fabric
+		dm        *dumper
 	)
 
 	// Build custom http/client
@@ -162,8 +129,11 @@ func NewProcessor(baseURL string, username string, password string, debug bool) 
 		},
 	}
 
-	// requestFabric creates various requests
+	// fabric creates various HTTP requests
 	fb = &fabric{baseURL, username, password}
 
-	return &processorImpl{client, fb, debug}, nil
+	// dumper deserializes HTTP responses to structs in various ways
+	dm = &dumper{debug}
+
+	return &processorImpl{client, fb, dm, debug}, nil
 }

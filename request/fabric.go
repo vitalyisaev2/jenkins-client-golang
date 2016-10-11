@@ -9,9 +9,10 @@ import (
 type JenkinsAPIRequest struct {
 	Method      string
 	Route       string
-	Format      JenkinsAPIFormat
 	Body        io.Reader
 	QueryParams map[string]string
+	Format      JenkinsAPIFormat
+	DumpMethod  ResponseDumpMethod
 }
 
 type JenkinsAPIFormat uint

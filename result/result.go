@@ -9,22 +9,33 @@ import (
 type Result interface{}
 
 // Root represents common information about Jenkins node
-// route: /api/json
+// method: GET
+// route: /
 type Root struct {
 	Response *response.Root
 	Error    error
 }
 
 // Job represents the common job item existing on Jenkins
-// route: /job/jobName
+// method: GET
+// route: /job/{.jobName}
 type Job struct {
 	Response *response.Job
 	Error    error
 }
 
 // Build represents information about job build
-// route: /job/jobName
+// method: GET
+// route: /job/{.jobName}/{.buildNumber}
 type Build struct {
 	Response *response.Build
+	Error    error
+}
+
+// QueueID contains the queue position of invoked build job
+// method: POST
+// route: /job/{.jobName}/Build
+type QueueID struct {
+	Response *response.QueueID
 	Error    error
 }

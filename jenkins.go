@@ -36,6 +36,7 @@ func (j *jenkinsImpl) RootInfo() <-chan *result.Root {
 			Format:      request.JenkinsAPIFormatJSON,
 			Body:        nil,
 			QueryParams: nil,
+			DumpMethod:  request.ResponseDumpDefaultJSON,
 		}
 		err := j.processor.GetJSON(&apiRequest, &receiver)
 		if err != nil {
@@ -63,6 +64,7 @@ func (j *jenkinsImpl) JobCreate(jobName string, jobConfig []byte) <-chan *result
 			Format:      request.JenkinsAPIFormatJSON,
 			Body:        body,
 			QueryParams: params,
+			DumpMethod:  request.ResponseDumpDefaultJSON,
 		}
 		err = j.processor.PostXML(&apiRequest, nil)
 		switch err {
@@ -89,6 +91,7 @@ func (j *jenkinsImpl) JobGet(jobName string) <-chan *result.Job {
 			Format:      request.JenkinsAPIFormatJSON,
 			Body:        nil,
 			QueryParams: nil,
+			DumpMethod:  request.ResponseDumpDefaultJSON,
 		}
 		err := j.processor.GetJSON(&apiRequest, &receiver)
 		if err != nil {
@@ -112,6 +115,7 @@ func (j *jenkinsImpl) JobDelete(jobName string) <-chan error {
 			Format:      request.JenkinsAPIFormatJSON,
 			Body:        nil,
 			QueryParams: nil,
+			DumpMethod:  request.ResponseDumpNone,
 		}
 		ch <- j.processor.Post(&apiRequest, nil)
 	}()
@@ -129,6 +133,7 @@ func (j *jenkinsImpl) BuildInvoke(jobName string) <-chan error {
 			Format:      request.JenkinsAPIFormatJSON,
 			Body:        nil,
 			QueryParams: nil,
+			DumpMethod:  request.ResponseDumpNone,
 		}
 		ch <- j.processor.Post(&apiRequest, nil)
 	}()
@@ -147,6 +152,7 @@ func (j *jenkinsImpl) BuildGetByNumber(jobName string, buildNumber uint) <-chan 
 			Format:      request.JenkinsAPIFormatJSON,
 			Body:        nil,
 			QueryParams: nil,
+			DumpMethod:  request.ResponseDumpDefaultJSON,
 		}
 		err := j.processor.GetJSON(&apiRequest, &receiver)
 		if err != nil {
