@@ -67,8 +67,13 @@ func TestJobCreate(t *testing.T) {
   <buildWrappers/>
 </project>
 `)
-	err := <-api.JobCreate(jobName, jobConfig)
-	assert.Nil(t, err)
+	result := <-api.JobCreate(jobName, jobConfig)
+	assert.NotNil(t, result)
+	assert.NotNil(t, result.Response)
+	assert.Nil(t, result.Error)
+
+	assert.Equal(t, jobName, result.Response.DisplayName)
+	assert.Equal(t, fmt.Sprintf("%s/job/%s/", baseURL, jobName), result.Response.URL)
 }
 
 func TestJobGet(t *testing.T) {

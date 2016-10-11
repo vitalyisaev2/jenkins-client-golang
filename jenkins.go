@@ -12,7 +12,7 @@ import (
 // Jenkins is an access point to Jenkins API
 type Jenkins interface {
 	RootInfo() <-chan *result.Root
-	JobCreate(string, []byte) <-chan error
+	JobCreate(string, []byte) <-chan *result.Job
 	JobGet(string) <-chan *result.Job
 	JobDelete(string) <-chan error
 }
@@ -46,11 +46,12 @@ func (j *jenkinsImpl) RootInfo() <-chan *result.Root {
 }
 
 // JobCreate creates new job for given name and xml configuration dumped into slice of bytes
-func (j *jenkinsImpl) JobCreate(jobName string, jobConfig []byte) <-chan error {
+func (j *jenkinsImpl) JobCreate(jobName string, jobConfig []byte) <-chan *result.Job {
+	var err error
 	params := make(map[string]string)
 	params["name"] = jobName
 	body := bytes.NewBuffer(jobConfig)
-	ch := make(chan error)
+	ch := make(chan *result.Job)
 
 	go func() {
 		defer close(ch)
@@ -61,7 +62,14 @@ func (j *jenkinsImpl) JobCreate(jobName string, jobConfig []byte) <-chan error {
 			Body:        body,
 			QueryParams: params,
 		}
-		ch <- j.processor.PostXML(&apiRequest, nil)
+		err = j.processor.PostXML(&apiRequest, nil)
+		switch err {
+		case nil:
+			res := <-j.JobGet(jobName)
+			ch <- res
+		default:
+			ch <- &result.Job{nil, err}
+		}
 	}()
 	return ch
 }
