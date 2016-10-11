@@ -4,37 +4,37 @@ package response
 type Job struct {
 	Actions            []interface{} `json:"actions"`
 	Buildable          bool          `json:"buildable"`
-	Builds             []JobBuild
+	Builds             []JobBuildBrief
 	Color              string      `json:"color"`
 	ConcurrentBuild    bool        `json:"concurrentBuild"`
 	Description        string      `json:"description"`
 	DisplayName        string      `json:"displayName"`
 	DisplayNameOrNull  interface{} `json:"displayNameOrNull"`
 	DownstreamProjects []JobBrief  `json:"downstreamProjects"`
-	FirstBuild         JobBuild
+	FirstBuild         JobBuildBrief
 	HealthReport       []struct {
 		Description   string `json:"description"`
 		IconClassName string `json:"iconClassName"`
 		IconURL       string `json:"iconUrl"`
-		Score         int64  `json:"score"`
+		Score         uint   `json:"score"`
 	} `json:"healthReport"`
-	InQueue               bool     `json:"inQueue"`
-	KeepDependencies      bool     `json:"keepDependencies"`
-	LastBuild             JobBuild `json:"lastBuild"`
-	LastCompletedBuild    JobBuild `json:"lastCompletedBuild"`
-	LastFailedBuild       JobBuild `json:"lastFailedBuild"`
-	LastStableBuild       JobBuild `json:"lastStableBuild"`
-	LastSuccessfulBuild   JobBuild `json:"lastSuccessfulBuild"`
-	LastUnstableBuild     JobBuild `json:"lastUnstableBuild"`
-	LastUnsuccessfulBuild JobBuild `json:"lastUnsuccessfulBuild"`
-	Name                  string   `json:"name"`
-	NextBuildNumber       int64    `json:"nextBuildNumber"`
+	InQueue               bool          `json:"inQueue"`
+	KeepDependencies      bool          `json:"keepDependencies"`
+	LastBuild             JobBuildBrief `json:"lastBuild"`
+	LastCompletedBuild    JobBuildBrief `json:"lastCompletedBuild"`
+	LastFailedBuild       JobBuildBrief `json:"lastFailedBuild"`
+	LastStableBuild       JobBuildBrief `json:"lastStableBuild"`
+	LastSuccessfulBuild   JobBuildBrief `json:"lastSuccessfulBuild"`
+	LastUnstableBuild     JobBuildBrief `json:"lastUnstableBuild"`
+	LastUnsuccessfulBuild JobBuildBrief `json:"lastUnsuccessfulBuild"`
+	Name                  string        `json:"name"`
+	NextBuildNumber       uint          `json:"nextBuildNumber"`
 	Property              []struct {
-		ParameterDefinitions []ParameterDefinition `json:"parameterDefinitions"`
+		ParameterDefinitions []JobParameterDefinition `json:"parameterDefinitions"`
 	} `json:"property"`
 	QueueItem        interface{} `json:"queueItem"`
 	Scm              struct{}    `json:"scm"`
-	UpstreamProjects []Job       `json:"upstreamProjects"`
+	UpstreamProjects []JobBrief  `json:"upstreamProjects"`
 	URL              string      `json:"url"`
 }
 
@@ -46,13 +46,13 @@ type JobBrief struct {
 }
 
 // JobBuild is a short representation of a common Jenkins build used in various API responses
-type JobBuild struct {
-	Number int64
+type JobBuildBrief struct {
+	Number uint
 	URL    string
 }
 
 // ParameterDefinition ???
-type ParameterDefinition struct {
+type JobParameterDefinition struct {
 	DefaultParameterValue struct {
 		Name  string `json:"name"`
 		Value bool   `json:"value"`

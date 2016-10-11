@@ -21,3 +21,10 @@ type Job struct {
 	Response *response.Job
 	Error    error
 }
+
+// Build represents information about job build
+// route: /job/jobName
+type Build struct {
+	Response *response.Build
+	Error    error
+}

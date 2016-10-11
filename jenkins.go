@@ -15,6 +15,8 @@ type Jenkins interface {
 	JobCreate(string, []byte) <-chan *result.Job
 	JobGet(string) <-chan *result.Job
 	JobDelete(string) <-chan error
+	BuildInvoke(string) <-chan error
+	BuildGetByNumber(string, uint) <-chan *result.Build
 }
 
 type jenkinsImpl struct {
@@ -117,6 +119,44 @@ func (j *jenkinsImpl) JobDelete(jobName string) <-chan error {
 }
 
 //
+func (j *jenkinsImpl) BuildInvoke(jobName string) <-chan error {
+	ch := make(chan error)
+	go func() {
+		defer close(ch)
+		apiRequest := request.JenkinsAPIRequest{
+			Method:      "POST",
+			Route:       fmt.Sprintf("/job/%s/build", jobName),
+			Format:      request.JenkinsAPIFormatJSON,
+			Body:        nil,
+			QueryParams: nil,
+		}
+		ch <- j.processor.Post(&apiRequest, nil)
+	}()
+	return ch
+}
+
+func (j *jenkinsImpl) BuildGetByNumber(jobName string, buildNumber uint) <-chan *result.Build {
+	var receiver response.Build
+
+	ch := make(chan *result.Build)
+	go func() {
+		defer close(ch)
+		apiRequest := request.JenkinsAPIRequest{
+			Method:      "GET",
+			Route:       fmt.Sprintf("/job/%s/%d", jobName, buildNumber),
+			Format:      request.JenkinsAPIFormatJSON,
+			Body:        nil,
+			QueryParams: nil,
+		}
+		err := j.processor.GetJSON(&apiRequest, &receiver)
+		if err != nil {
+			ch <- &result.Build{nil, err}
+		} else {
+			ch <- &result.Build{&receiver, nil}
+		}
+	}()
+	return ch
+}
 
 // NewJenkins initialises an entrypoint for Jenkins API
 func NewJenkins(baseURL string, username string, password string, debug bool) (Jenkins, error) {

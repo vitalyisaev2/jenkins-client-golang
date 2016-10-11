@@ -5,6 +5,7 @@ import (
 	"log"
 	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/vitalyisaev2/jenkins-client-golang"
@@ -29,6 +30,7 @@ func init() {
 	log.Printf("jenkinsAdminPassword captured: %s\n", jenkinsAdminPassword)
 }
 
+// Test API initialisation
 func TestInit(t *testing.T) {
 	var err error
 	api, err = jenkins.NewJenkins(baseURL, jenkinsAdminLogin, jenkinsAdminPassword, debug)
@@ -43,8 +45,10 @@ func TestInit(t *testing.T) {
 	assert.NotEqual(t, 0, result.Response.NumExecutors)
 }
 
-func TestJobCreate(t *testing.T) {
-	jobName := "test1"
+// Test create, get, build, delete simple (non parametrized) job
+func TestSimpleJobActions(t *testing.T) {
+	var err error
+	var jobName string = "test1"
 	jobConfig := []byte(`
 <project>
   <actions/>
@@ -67,31 +71,51 @@ func TestJobCreate(t *testing.T) {
   <buildWrappers/>
 </project>
 `)
-	result := <-api.JobCreate(jobName, jobConfig)
-	assert.NotNil(t, result)
-	assert.NotNil(t, result.Response)
-	assert.Nil(t, result.Error)
+	// Create job
+	jobCreateResult := <-api.JobCreate(jobName, jobConfig)
+	assert.NotNil(t, jobCreateResult)
+	assert.NotNil(t, jobCreateResult.Response)
+	assert.Nil(t, jobCreateResult.Error)
+	assert.Equal(t, jobName, jobCreateResult.Response.DisplayName)
+	assert.Equal(t, fmt.Sprintf("%s/job/%s/", baseURL, jobName), jobCreateResult.Response.URL)
 
-	assert.Equal(t, jobName, result.Response.DisplayName)
-	assert.Equal(t, fmt.Sprintf("%s/job/%s/", baseURL, jobName), result.Response.URL)
-}
+	// Invoke build
+	err = <-api.BuildInvoke(jobName)
+	assert.Nil(t, err)
+	time.Sleep(20 * time.Second)
 
-func TestJobGet(t *testing.T) {
-	jobName := "test1"
-	result := <-api.JobGet(jobName)
-	assert.NotNil(t, result)
-	assert.NotNil(t, result.Response)
-	assert.Nil(t, result.Error)
+	// Get job information
+	jobGetResult := <-api.JobGet(jobName)
+	assert.NotNil(t, jobGetResult)
+	assert.NotNil(t, jobGetResult.Response)
+	assert.Nil(t, jobGetResult.Error)
 
-	assert.Equal(t, jobName, result.Response.DisplayName)
-	assert.Equal(t, fmt.Sprintf("%s/job/%s/", baseURL, jobName), result.Response.URL)
-}
+	// Check some of common job information
+	job := jobGetResult.Response
+	assert.Equal(t, jobName, job.DisplayName)
+	assert.Equal(t, fmt.Sprintf("%s/job/%s/", baseURL, jobName), job.URL)
 
-//func TestJobBuild(t *testing.T) {
-//}
+	// Check some of build-related job information
+	assert.False(t, job.InQueue)
+	assert.True(t, job.LastBuild.Number == job.LastSuccessfulBuild.Number)
+	assert.Zero(t, job.LastFailedBuild.Number)
+	var expectedNextBuildNumber uint = 2
+	assert.Equal(t, expectedNextBuildNumber, job.NextBuildNumber)
 
-func TestJobDelete(t *testing.T) {
-	jobName := "test1"
-	err := <-api.JobDelete(jobName)
+	// Get build by a known number for a particular job
+	var jobBuildNumber uint = 1
+	buildGetResult := <-api.BuildGetByNumber(jobName, jobBuildNumber)
+	assert.NotNil(t, buildGetResult)
+	assert.NotNil(t, buildGetResult.Response)
+	assert.Nil(t, buildGetResult.Error)
+
+	// Check some of build-related job information
+	build := buildGetResult.Response
+	assert.Equal(t, "SUCCESS", build.Result)
+	assert.Equal(t, jobBuildNumber, build.Number)
+	assert.False(t, build.Building)
+
+	// Delete job
+	err = <-api.JobDelete(jobName)
 	assert.Nil(t, err)
 }
