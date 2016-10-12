@@ -3,6 +3,7 @@ package jenkins
 import (
 	"bytes"
 	"fmt"
+	"net/url"
 
 	"github.com/vitalyisaev2/jenkins-client-golang/request"
 	"github.com/vitalyisaev2/jenkins-client-golang/response"
@@ -15,7 +16,7 @@ type Jenkins interface {
 	JobCreate(string, []byte) <-chan *result.Job
 	JobGet(string) <-chan *result.Job
 	JobDelete(string) <-chan error
-	BuildInvoke(string) <-chan error
+	BuildInvoke(string) <-chan *result.QueueItem
 	BuildGetByNumber(string, uint) <-chan *result.Build
 }
 
@@ -122,9 +123,10 @@ func (j *jenkinsImpl) JobDelete(jobName string) <-chan error {
 	return ch
 }
 
-//
-func (j *jenkinsImpl) BuildInvoke(jobName string) <-chan error {
-	ch := make(chan error)
+func (j *jenkinsImpl) BuildInvoke(jobName string) <-chan *result.QueueItem {
+	var receiver url.URL
+	ch := make(chan *result.QueueItem)
+
 	go func() {
 		defer close(ch)
 		apiRequest := request.JenkinsAPIRequest{
@@ -133,9 +135,21 @@ func (j *jenkinsImpl) BuildInvoke(jobName string) <-chan error {
 			Format:      request.JenkinsAPIFormatJSON,
 			Body:        nil,
 			QueryParams: nil,
-			DumpMethod:  request.ResponseDumpNone,
+			DumpMethod:  request.ResponseDumpHeaderLocation,
 		}
-		ch <- j.processor.Post(&apiRequest, nil)
+		err := j.processor.Post(&apiRequest, &receiver)
+		//fmt.Printf("receiver %v (%T) (%p)\n", receiver, receiver, &receiver)
+		if err != nil {
+			ch <- &result.QueueItem{nil, err}
+		} else {
+			//fmt.Printf("receiver %v (%T) (%p)\n", receiver, receiver, &receiver)
+			//res := &response.QueueItem{&receiver, 0}
+			if resp, err := response.NewQueueItemFromURL(&receiver); err != nil {
+				ch <- &result.QueueItem{nil, err}
+			} else {
+				ch <- &result.QueueItem{resp, nil}
+			}
+		}
 	}()
 	return ch
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 
 	"github.com/vitalyisaev2/jenkins-client-golang/result"
 )
@@ -30,14 +31,6 @@ type dumper struct {
 
 func (dm *dumper) dump(httpResponse *http.Response, receiver result.Result, method ResponseDumpMethod) error {
 
-	// Check response status
-	switch httpResponse.StatusCode {
-	case http.StatusOK, http.StatusCreated:
-		break
-	default:
-		return fmt.Errorf("%s", httpResponse.Status)
-	}
-
 	// Select dump method and run it
 	switch method {
 	case ResponseDumpNone:
@@ -45,16 +38,53 @@ func (dm *dumper) dump(httpResponse *http.Response, receiver result.Result, meth
 	case ResponseDumpDefaultJSON:
 		return dm.defaultJSON(httpResponse, receiver)
 	case ResponseDumpHeaderLocation:
-		return fmt.Errorf("Not implemented yet")
+		// Cast receiver to URL
+		if receiverURL, casted := receiver.(*url.URL); !casted {
+			return fmt.Errorf("Cannot cast receiver to *url.URL")
+		} else {
+			return dm.headerLocation(httpResponse, receiverURL)
+		}
 	default:
 		return fmt.Errorf("Unknown ResponseDumpMethod")
 	}
 }
 
-func (dm *dumper) defaultJSON(httpResponse *http.Response, receiver result.Result) error {
-	var err error
+// Unmarshal location header to a given URL
+func (dm *dumper) headerLocation(httpResponse *http.Response, receiver *url.URL) error {
 
+	// Check response status
+	switch httpResponse.StatusCode {
+	case http.StatusCreated:
+		break
+	default:
+		return fmt.Errorf("Bad response status: %s", httpResponse.Status)
+	}
+
+	location, err := httpResponse.Location()
+	//fmt.Printf("receiver %v (%T) (%p)\n", receiver, receiver, receiver)
+	if err != nil {
+		return err
+	} else {
+		*receiver = *location
+		//fmt.Printf("receiver %v (%T) (%p)\n", receiver, receiver, receiver)
+		return nil
+	}
+}
+
+// Unmarshal JSON to a given receiver
+func (dm *dumper) defaultJSON(httpResponse *http.Response, receiver result.Result) error {
+
+	// Check response status
+	switch httpResponse.StatusCode {
+	case http.StatusOK:
+		break
+	default:
+		return fmt.Errorf("Bad response status: %s", httpResponse.Status)
+	}
+
+	var err error
 	defer httpResponse.Body.Close()
+
 	switch dm.debug {
 	case true:
 		// FIXME: use logger

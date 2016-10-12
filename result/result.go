@@ -35,7 +35,7 @@ type Build struct {
 // QueueID contains the queue position of invoked build job
 // method: POST
 // route: /job/{.jobName}/Build
-type QueueID struct {
-	Response *response.QueueID
+type QueueItem struct {
+	Response *response.QueueItem
 	Error    error
 }

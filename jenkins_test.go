@@ -80,8 +80,13 @@ func TestSimpleJobActions(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf("%s/job/%s/", baseURL, jobName), jobCreateResult.Response.URL)
 
 	// Invoke build
-	err = <-api.BuildInvoke(jobName)
-	assert.Nil(t, err)
+	buildInvokeResult := <-api.BuildInvoke(jobName)
+	assert.NotNil(t, buildInvokeResult)
+	assert.Nil(t, buildInvokeResult.Error)
+	assert.NotNil(t, buildInvokeResult.Response)
+	invoked := buildInvokeResult.Response
+	assert.NotNil(t, invoked.URL)
+	assert.NotZero(t, invoked.ID)
 	time.Sleep(20 * time.Second)
 
 	// Get job information
