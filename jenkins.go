@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/url"
+	"strconv"
 
 	"github.com/vitalyisaev2/jenkins-client-golang/request"
 	"github.com/vitalyisaev2/jenkins-client-golang/response"
@@ -18,6 +19,7 @@ type Jenkins interface {
 	JobDelete(string) <-chan error
 	BuildInvoke(string) <-chan *result.QueueItem
 	BuildGetByNumber(string, uint) <-chan *result.Build
+	BuildGetByQueueID(string, uint) <-chan *result.Build
 }
 
 type jenkinsImpl struct {
@@ -138,12 +140,9 @@ func (j *jenkinsImpl) BuildInvoke(jobName string) <-chan *result.QueueItem {
 			DumpMethod:  request.ResponseDumpHeaderLocation,
 		}
 		err := j.processor.Post(&apiRequest, &receiver)
-		//fmt.Printf("receiver %v (%T) (%p)\n", receiver, receiver, &receiver)
 		if err != nil {
 			ch <- &result.QueueItem{nil, err}
 		} else {
-			//fmt.Printf("receiver %v (%T) (%p)\n", receiver, receiver, &receiver)
-			//res := &response.QueueItem{&receiver, 0}
 			if resp, err := response.NewQueueItemFromURL(&receiver); err != nil {
 				ch <- &result.QueueItem{nil, err}
 			} else {
@@ -174,6 +173,68 @@ func (j *jenkinsImpl) BuildGetByNumber(jobName string, buildNumber uint) <-chan 
 		} else {
 			ch <- &result.Build{&receiver, nil}
 		}
+	}()
+	return ch
+}
+
+func (j *jenkinsImpl) BuildGetByQueueID(jobName string, queueID uint) <-chan *result.Build {
+	var err error
+
+	ch := make(chan *result.Build)
+	go func() {
+		defer close(ch)
+
+		// 1. Request list of brief build descriptions for a particular job
+		type buildListItem struct {
+			buildID string `json:"id"`
+			queueID uint   `json:"queueId"`
+			url     string `json:"url"`
+		}
+		buildListReceiver := struct {
+			builds []buildListItem `json:"builds"`
+		}{make([]buildListItem, 0)}
+		buildListParams := make(map[string]string)
+		buildListParams["tree"] = "builds[id,queueId,url]"
+
+		buildListRequest := request.JenkinsAPIRequest{
+			Method:      "GET",
+			Route:       fmt.Sprintf("/job/%s", jobName),
+			Format:      request.JenkinsAPIFormatJSON,
+			Body:        nil,
+			QueryParams: buildListParams,
+			DumpMethod:  request.ResponseDumpDefaultJSON,
+		}
+		err = j.processor.GetJSON(&buildListRequest, &buildListReceiver)
+		if err != nil {
+			ch <- &result.Build{nil, err}
+			return
+		}
+		fmt.Println(buildListReceiver)
+
+		// 2. Search for a job with a particular queueID
+		var targetBuildNumber uint
+		for _, item := range buildListReceiver.builds {
+			if queueID == item.queueID {
+				var u64 uint64
+				if u64, err = strconv.ParseUint(item.buildID, 10, 0); err != nil {
+					ch <- &result.Build{nil, err}
+					return
+				}
+				targetBuildNumber = uint(u64)
+				break
+			}
+		}
+		if targetBuildNumber == 0 {
+			ch <- &result.Build{
+				nil,
+				fmt.Errorf("Build for a job %s with a queueID %d was not found", jobName, queueID),
+			}
+			return
+		}
+
+		// 3. Get job with a particular build
+		resp := <-j.BuildGetByNumber(jobName, targetBuildNumber)
+		ch <- resp
 	}()
 	return ch
 }

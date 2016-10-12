@@ -14,7 +14,46 @@ import (
 const (
 	baseURL           string = "http://localhost:8080"
 	jenkinsAdminLogin string = "admin"
-	debug             bool   = false
+	debug             bool   = true
+	jobConfigDefault  string = `
+<project>
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <publishers/>
+  <buildWrappers/>
+</project>
+	`
+	jobConfigWithSleep string = `
+<project>
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>sleep 1;</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>
+	`
 )
 
 var jenkinsAdminPassword string
@@ -49,28 +88,7 @@ func TestInit(t *testing.T) {
 func TestSimpleJobActions(t *testing.T) {
 	var err error
 	var jobName string = "test1"
-	jobConfig := []byte(`
-<project>
-  <actions/>
-  <description></description>
-  <keepDependencies>false</keepDependencies>
-  <properties/>
-  <scm class="hudson.scm.NullSCM"/>
-  <canRoam>true</canRoam>
-  <disabled>false</disabled>
-  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
-  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
-  <triggers/>
-  <concurrentBuild>false</concurrentBuild>
-  <builders>
-    <hudson.tasks.Shell>
-      <command>sleep 10;</command>
-    </hudson.tasks.Shell>
-  </builders>
-  <publishers/>
-  <buildWrappers/>
-</project>
-`)
+	jobConfig := []byte(jobConfigDefault)
 	// Create job
 	jobCreateResult := <-api.JobCreate(jobName, jobConfig)
 	assert.NotNil(t, jobCreateResult)
@@ -87,7 +105,7 @@ func TestSimpleJobActions(t *testing.T) {
 	invoked := buildInvokeResult.Response
 	assert.NotNil(t, invoked.URL)
 	assert.NotZero(t, invoked.ID)
-	time.Sleep(20 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	// Get job information
 	jobGetResult := <-api.JobGet(jobName)
@@ -113,6 +131,15 @@ func TestSimpleJobActions(t *testing.T) {
 	assert.NotNil(t, buildGetResult)
 	assert.NotNil(t, buildGetResult.Response)
 	assert.Nil(t, buildGetResult.Error)
+
+	// Get build by a known QueueID for a particular job
+	buildGetByQueueIDResult := <-api.BuildGetByQueueID(jobName, invoked.ID)
+	assert.NotNil(t, buildGetByQueueIDResult)
+	assert.NotNil(t, buildGetByQueueIDResult.Response)
+	assert.Nil(t, buildGetByQueueIDResult.Error)
+
+	// Check that build information retrieved by this too method is equivalent
+	assert.Equal(t, buildGetResult.Response, buildGetByQueueIDResult.Response)
 
 	// Check some of build-related job information
 	build := buildGetResult.Response
