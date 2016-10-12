@@ -1,30 +1,26 @@
 package response
 
-import (
-	"fmt"
-	"net/url"
-	"regexp"
-	"strconv"
-)
-
-// QueueIten is returned as a part of a response headers when the build is invoked
-type QueueItem struct {
-	URL *url.URL
-	ID  uint
+// Queue
+type Queue struct {
+	Items []QueueItem `json:"items"`
 }
 
-// NewQueueItemFromURL returns struct with URL and parsed location
-func NewQueueItemFromURL(URL *url.URL) (*QueueItem, error) {
-	// TODO: use precompiled regex
-	pattern := regexp.MustCompile("queue/item/(?P<id>[0-9]+)/")
-	if !pattern.MatchString(URL.Path) {
-		return nil, fmt.Errorf("Returned URL (%v) doesn't match expected pattern", URL)
-	} else {
-		raw := pattern.FindStringSubmatch(URL.Path)[1]
-		if u64, err := strconv.ParseUint(raw, 10, 0); err != nil {
-			return nil, err
-		} else {
-			return &QueueItem{URL, uint(u64)}, nil
-		}
-	}
+// QueueItem
+type QueueItem struct {
+	Actions                    []struct{} `json:"actions"`
+	Blocked                    bool       `json:"blocked"`
+	Buildable                  bool       `json:"buildable"`
+	BuildableStartMilliseconds uint       `json:"buildableStartMilliseconds"`
+	ID                         uint       `json:"id"`
+	InQueueSince               uint       `json:"inQueueSince"`
+	Params                     string     `json:"params"`
+	Pending                    bool       `json:"pending"`
+	Stuck                      bool       `json:"stuck"`
+	Task                       struct {
+		Color string `json:"color"`
+		Name  string `json:"name"`
+		URL   string `json:"url"`
+	} `json:"task"`
+	URL string `json:"url"`
+	Why string `json:"why"`
 }

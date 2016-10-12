@@ -17,7 +17,7 @@ type Jenkins interface {
 	JobCreate(string, []byte) <-chan *result.Job
 	JobGet(string) <-chan *result.Job
 	JobDelete(string) <-chan error
-	BuildInvoke(string) <-chan *result.QueueItem
+	BuildInvoke(string) <-chan *result.BuildInvoked
 	BuildGetByNumber(string, uint) <-chan *result.Build
 	BuildGetByQueueID(string, uint) <-chan *result.Build
 }
@@ -125,9 +125,9 @@ func (j *jenkinsImpl) JobDelete(jobName string) <-chan error {
 	return ch
 }
 
-func (j *jenkinsImpl) BuildInvoke(jobName string) <-chan *result.QueueItem {
+func (j *jenkinsImpl) BuildInvoke(jobName string) <-chan *result.BuildInvoked {
 	var receiver url.URL
-	ch := make(chan *result.QueueItem)
+	ch := make(chan *result.BuildInvoked)
 
 	go func() {
 		defer close(ch)
@@ -141,12 +141,12 @@ func (j *jenkinsImpl) BuildInvoke(jobName string) <-chan *result.QueueItem {
 		}
 		err := j.processor.Post(&apiRequest, &receiver)
 		if err != nil {
-			ch <- &result.QueueItem{nil, err}
+			ch <- &result.BuildInvoked{nil, err}
 		} else {
-			if resp, err := response.NewQueueItemFromURL(&receiver); err != nil {
-				ch <- &result.QueueItem{nil, err}
+			if resp, err := response.NewBuildInvokedFromURL(&receiver); err != nil {
+				ch <- &result.BuildInvoked{nil, err}
 			} else {
-				ch <- &result.QueueItem{resp, nil}
+				ch <- &result.BuildInvoked{resp, nil}
 			}
 		}
 	}()
