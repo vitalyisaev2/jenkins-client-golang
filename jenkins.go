@@ -186,13 +186,14 @@ func (j *jenkinsImpl) BuildGetByQueueID(jobName string, queueID uint) <-chan *re
 
 		// 1. Request list of brief build descriptions for a particular job
 		type buildListItem struct {
-			buildID string `json:"id"`
-			queueID uint   `json:"queueId"`
-			url     string `json:"url"`
+			BuildID string `json:"id"`
+			QueueID uint   `json:"queueId"`
+			URL     string `json:"url"`
 		}
-		buildListReceiver := struct {
-			builds []buildListItem `json:"builds"`
-		}{make([]buildListItem, 0)}
+		type buildList struct {
+			Builds []buildListItem `json:"builds"`
+		}
+		var buildListReceiver buildList
 		buildListParams := make(map[string]string)
 		buildListParams["tree"] = "builds[id,queueId,url]"
 
@@ -209,14 +210,13 @@ func (j *jenkinsImpl) BuildGetByQueueID(jobName string, queueID uint) <-chan *re
 			ch <- &result.Build{nil, err}
 			return
 		}
-		fmt.Println(buildListReceiver)
 
 		// 2. Search for a job with a particular queueID
 		var targetBuildNumber uint
-		for _, item := range buildListReceiver.builds {
-			if queueID == item.queueID {
+		for _, item := range buildListReceiver.Builds {
+			if queueID == item.QueueID {
 				var u64 uint64
-				if u64, err = strconv.ParseUint(item.buildID, 10, 0); err != nil {
+				if u64, err = strconv.ParseUint(item.BuildID, 10, 0); err != nil {
 					ch <- &result.Build{nil, err}
 					return
 				}

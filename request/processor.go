@@ -80,6 +80,10 @@ func (processor *processorImpl) processRequest(httpRequest *http.Request, receiv
 	var err error
 	var httpResponse *http.Response
 
+	if processor.debug {
+		fmt.Printf("Request URL: %s\n", httpRequest.URL)
+	}
+
 	// Set header preventing CSRF attacs if necessary
 	if setCrumbs {
 		err = processor.setCrumbs(httpRequest)

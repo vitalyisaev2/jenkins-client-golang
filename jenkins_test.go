@@ -14,7 +14,7 @@ import (
 const (
 	baseURL           string = "http://localhost:8080"
 	jenkinsAdminLogin string = "admin"
-	debug             bool   = true
+	debug             bool   = false
 	jobConfigDefault  string = `
 <project>
   <actions/>
