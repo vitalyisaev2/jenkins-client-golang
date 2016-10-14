@@ -13,12 +13,19 @@ import (
 
 // Jenkins is an access point to Jenkins API
 type Jenkins interface {
+	// RootInfo returns basic information about the node that you've connected to
 	RootInfo() <-chan *result.Root
+	// JobCreate creates new job for given name and xml configuration dumped into slice of bytes
 	JobCreate(string, []byte) <-chan *result.Job
+	// JobGet requests common job information for a given job name
 	JobGet(string) <-chan *result.Job
+	// JobDelete deletes the requested job
 	JobDelete(string) <-chan error
+	// BuildInvoke invokes simple (non-paramethrized) build of a given job
 	BuildInvoke(string) <-chan *result.BuildInvoked
+	// BuildGetByNumber returns information about particular jenkins build
 	BuildGetByNumber(string, uint) <-chan *result.Build
+	// BuildGetByNumber returns information about particular jenkins build by given queue id
 	BuildGetByQueueID(string, uint) <-chan *result.Build
 }
 
@@ -125,6 +132,7 @@ func (j *jenkinsImpl) JobDelete(jobName string) <-chan error {
 	return ch
 }
 
+// BuildInvoke invokes simple (non-paramethrized) build of a given job
 func (j *jenkinsImpl) BuildInvoke(jobName string) <-chan *result.BuildInvoked {
 	var receiver url.URL
 	ch := make(chan *result.BuildInvoked)
@@ -153,6 +161,7 @@ func (j *jenkinsImpl) BuildInvoke(jobName string) <-chan *result.BuildInvoked {
 	return ch
 }
 
+// BuildGetByNumber returns information about particular jenkins build
 func (j *jenkinsImpl) BuildGetByNumber(jobName string, buildNumber uint) <-chan *result.Build {
 	var receiver response.Build
 
@@ -177,6 +186,7 @@ func (j *jenkinsImpl) BuildGetByNumber(jobName string, buildNumber uint) <-chan 
 	return ch
 }
 
+// BuildGetByQueueID returns information about particular jenkins build by given queue id
 func (j *jenkinsImpl) BuildGetByQueueID(jobName string, queueID uint) <-chan *result.Build {
 	var err error
 
@@ -235,6 +245,28 @@ func (j *jenkinsImpl) BuildGetByQueueID(jobName string, queueID uint) <-chan *re
 		// 3. Get job with a particular build
 		resp := <-j.BuildGetByNumber(jobName, targetBuildNumber)
 		ch <- resp
+	}()
+	return ch
+}
+
+//PluginInstall performs installation of latest version of the plugin in Jenkins.
+//paricular version cannot be specified, see https://issues.jenkins-ci.org/browse/JENKINS-32793
+func (j *jenkinsImpl) PluginInstall(pluginName string) <-chan error {
+	bodyStr := fmt.Sprintf(`<jenkins><install plugin="%s@current"></jenkins>`, pluginName)
+	body := bytes.NewBufferString(bodyStr)
+	ch := make(chan error)
+
+	go func() {
+		defer close(ch)
+		apiRequest := request.JenkinsAPIRequest{
+			Method:      "POST",
+			Route:       "/pluginManager/uploadPlugin",
+			Format:      request.JenkinsAPIFormatJSON,
+			Body:        body,
+			QueryParams: nil,
+			DumpMethod:  request.ResponseDumpNone,
+		}
+		ch <- j.processor.Post(&apiRequest, nil)
 	}()
 	return ch
 }
