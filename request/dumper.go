@@ -15,7 +15,7 @@ import (
 type ResponseDumpMethod uint
 
 const (
-	// Omit dumping
+	// ResponseDumpNone omits dumping
 	ResponseDumpNone ResponseDumpMethod = iota
 	// ResponseDumpDefaultJSON unmarshalles JSON into a given struct
 	ResponseDumpDefaultJSON
@@ -89,7 +89,11 @@ func (dm *dumper) defaultJSON(httpResponse *http.Response, receiver result.Resul
 	case true:
 		// FIXME: use logger
 		{
-			dumpedBody, _ := ioutil.ReadAll(httpResponse.Body)
+			var dumpedBody []byte
+			dumpedBody, err = ioutil.ReadAll(httpResponse.Body)
+			if err != nil {
+				return err
+			}
 			dumpedBodyReader := bytes.NewBuffer(dumpedBody)
 			fmt.Printf("ResponseBody: %s\n", string(dumpedBody))
 			switch receiver {

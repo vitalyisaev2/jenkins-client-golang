@@ -134,7 +134,7 @@ func TestSimpleJobActions(t *testing.T) {
 
 	// Check some of build-related job information
 	assert.False(t, job.InQueue)
-	assert.True(t, job.LastBuild.Number == job.LastSuccessfulBuild.Number)
+	assert.Equal(t, job.LastBuild.Number, job.LastSuccessfulBuild.Number)
 	assert.Zero(t, job.LastFailedBuild.Number)
 	var expectedNextBuildNumber uint = 2
 	assert.Equal(t, expectedNextBuildNumber, job.NextBuildNumber)
