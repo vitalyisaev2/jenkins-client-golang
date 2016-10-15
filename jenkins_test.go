@@ -14,7 +14,7 @@ import (
 const (
 	baseURL           string = "http://localhost:8080"
 	jenkinsAdminLogin string = "admin"
-	debug             bool   = false
+	debug             bool   = true
 	jobConfigDefault  string = `
 <project>
   <actions/>
@@ -88,7 +88,7 @@ func TestInit(t *testing.T) {
 func TestSimpleJobActions(t *testing.T) {
 	var err error
 	var jobName string = "test1"
-	jobConfig := []byte(jobConfigDefault)
+	jobConfig := []byte(jobConfigWithSleep)
 	// Create job
 	jobCreateResult := <-api.JobCreate(jobName, jobConfig)
 	assert.NotNil(t, jobCreateResult)
@@ -96,6 +96,14 @@ func TestSimpleJobActions(t *testing.T) {
 	assert.Nil(t, jobCreateResult.Error)
 	assert.Equal(t, jobName, jobCreateResult.Response.DisplayName)
 	assert.Equal(t, fmt.Sprintf("%s/job/%s/", baseURL, jobName), jobCreateResult.Response.URL)
+
+	// Check that Job exists, but is not enqueued or building
+	jobExists := <-api.JobExists(jobName)
+	assert.True(t, jobExists)
+	jobInQueue := <-api.JobInQueue(jobName)
+	assert.False(t, jobInQueue)
+	jobIsBuilding := <-api.JobIsBuilding(jobName)
+	assert.False(t, jobIsBuilding)
 
 	// Invoke build
 	buildInvokeResult := <-api.BuildInvoke(jobName)
@@ -105,10 +113,33 @@ func TestSimpleJobActions(t *testing.T) {
 	invoked := buildInvokeResult.Response
 	assert.NotNil(t, invoked.URL)
 	assert.NotZero(t, invoked.ID)
-	time.Sleep(10 * time.Second)
+
+	// Wait until build will pass the queue and building process
+	for {
+		jobInQueue = <-api.JobInQueue(jobName)
+		if !jobInQueue {
+			fmt.Println("Job has passed the queue")
+			break
+		}
+		fmt.Println("Job is in queue. Waiting for 1 sec...")
+		time.Sleep(1 * time.Second)
+	}
+
+	for {
+		jobIsBuilding = <-api.JobIsBuilding(jobName)
+		if !jobIsBuilding {
+			fmt.Println("Job has been built")
+			break
+		}
+		fmt.Println("Job is building. Waiting for 1 sec...")
+		time.Sleep(1 * time.Second)
+	}
+
+	// After
+	//time.Sleep(15 * time.Second)
 
 	// Get job information
-	jobGetResult := <-api.JobGet(jobName)
+	jobGetResult := <-api.JobGet(jobName, 0)
 	assert.NotNil(t, jobGetResult)
 	assert.NotNil(t, jobGetResult.Response)
 	assert.Nil(t, jobGetResult.Error)

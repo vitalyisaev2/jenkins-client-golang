@@ -18,17 +18,17 @@ type Job struct {
 		IconURL       string `json:"iconUrl"`
 		Score         uint   `json:"score"`
 	} `json:"healthReport"`
-	InQueue               bool          `json:"inQueue"`
-	KeepDependencies      bool          `json:"keepDependencies"`
-	LastBuild             JobBuildBrief `json:"lastBuild"`
-	LastCompletedBuild    JobBuildBrief `json:"lastCompletedBuild"`
-	LastFailedBuild       JobBuildBrief `json:"lastFailedBuild"`
-	LastStableBuild       JobBuildBrief `json:"lastStableBuild"`
-	LastSuccessfulBuild   JobBuildBrief `json:"lastSuccessfulBuild"`
-	LastUnstableBuild     JobBuildBrief `json:"lastUnstableBuild"`
-	LastUnsuccessfulBuild JobBuildBrief `json:"lastUnsuccessfulBuild"`
-	Name                  string        `json:"name"`
-	NextBuildNumber       uint          `json:"nextBuildNumber"`
+	InQueue               bool   `json:"inQueue"`
+	KeepDependencies      bool   `json:"keepDependencies"`
+	LastBuild             Build  `json:"lastBuild"`
+	LastCompletedBuild    Build  `json:"lastCompletedBuild"`
+	LastFailedBuild       Build  `json:"lastFailedBuild"`
+	LastStableBuild       Build  `json:"lastStableBuild"`
+	LastSuccessfulBuild   Build  `json:"lastSuccessfulBuild"`
+	LastUnstableBuild     Build  `json:"lastUnstableBuild"`
+	LastUnsuccessfulBuild Build  `json:"lastUnsuccessfulBuild"`
+	Name                  string `json:"name"`
+	NextBuildNumber       uint   `json:"nextBuildNumber"`
 	Property              []struct {
 		ParameterDefinitions []JobParameterDefinition `json:"parameterDefinitions"`
 	} `json:"property"`

@@ -18,9 +18,15 @@ type Jenkins interface {
 	// JobCreate creates new job for given name and xml configuration dumped into slice of bytes
 	JobCreate(string, []byte) <-chan *result.Job
 	// JobGet requests common job information for a given job name
-	JobGet(string) <-chan *result.Job
+	JobGet(string, uint) <-chan *result.Job
 	// JobDelete deletes the requested job
 	JobDelete(string) <-chan error
+	// JobExists checks wether job with a given name exists or not
+	JobExists(string) <-chan bool
+	// JobInQueue checks whether job with a given name is in queue at the moment
+	JobInQueue(string) <-chan bool
+	// JobIsBuilding checks whether job with a given name is building at the moment
+	JobIsBuilding(string) <-chan bool
 	// BuildInvoke invokes simple (non-paramethrized) build of a given job
 	BuildInvoke(string) <-chan *result.BuildInvoked
 	// BuildGetByNumber returns information about particular jenkins build
@@ -50,9 +56,9 @@ func (j *jenkinsImpl) RootInfo() <-chan *result.Root {
 		}
 		err := j.processor.GetJSON(&apiRequest, &receiver)
 		if err != nil {
-			ch <- &result.Root{nil, err}
+			ch <- &result.Root{Response: nil, Error: err}
 		} else {
-			ch <- &result.Root{&receiver, nil}
+			ch <- &result.Root{Response: &receiver, Error: nil}
 		}
 	}()
 	return ch
@@ -79,35 +85,43 @@ func (j *jenkinsImpl) JobCreate(jobName string, jobConfig []byte) <-chan *result
 		err = j.processor.PostXML(&apiRequest, nil)
 		switch err {
 		case nil:
-			res := <-j.JobGet(jobName)
+			res := <-j.JobGet(jobName, 0)
 			ch <- res
 		default:
-			ch <- &result.Job{nil, err}
+			ch <- &result.Job{Response: nil, Error: err}
 		}
 	}()
 	return ch
 }
 
 // JobGet requests common job information for a given job name
-func (j *jenkinsImpl) JobGet(jobName string) <-chan *result.Job {
+func (j *jenkinsImpl) JobGet(jobName string, depth uint) <-chan *result.Job {
 	var receiver response.Job
 	ch := make(chan *result.Job)
 
 	go func() {
 		defer close(ch)
+		params := make(map[string]string)
+
+		if depth > 2 {
+			ch <- &result.Job{Response: nil, Error: fmt.Errorf("Bad depth")}
+		} else if depth != 0 {
+			params["depth"] = strconv.FormatUint(uint64(depth), 10)
+		}
+
 		apiRequest := request.JenkinsAPIRequest{
 			Method:      "GET",
 			Route:       fmt.Sprintf("/job/%s", jobName),
 			Format:      request.JenkinsAPIFormatJSON,
 			Body:        nil,
-			QueryParams: nil,
+			QueryParams: params,
 			DumpMethod:  request.ResponseDumpDefaultJSON,
 		}
 		err := j.processor.GetJSON(&apiRequest, &receiver)
 		if err != nil {
-			ch <- &result.Job{nil, err}
+			ch <- &result.Job{Response: nil, Error: err}
 		} else {
-			ch <- &result.Job{&receiver, nil}
+			ch <- &result.Job{Response: &receiver, Error: nil}
 		}
 	}()
 	return ch
@@ -132,6 +146,48 @@ func (j *jenkinsImpl) JobDelete(jobName string) <-chan error {
 	return ch
 }
 
+// JobExists checks wether job with a given name exists or not
+func (j *jenkinsImpl) JobExists(jobName string) <-chan bool {
+	ch := make(chan bool)
+	go func() {
+		defer close(ch)
+		jobGet := <-j.JobGet(jobName, 0)
+		if jobGet.Error != nil {
+			ch <- false
+		}
+		ch <- true
+	}()
+	return ch
+}
+
+// JobExists checks wether job with a given name exists or not
+func (j *jenkinsImpl) JobInQueue(jobName string) <-chan bool {
+	ch := make(chan bool)
+	go func() {
+		defer close(ch)
+		jobGet := <-j.JobGet(jobName, 0)
+		if jobGet.Error != nil {
+			ch <- false
+		}
+		ch <- jobGet.Response.InQueue
+	}()
+	return ch
+}
+
+// JobIsBuilding checks whether job with a given name is building at the moment
+func (j *jenkinsImpl) JobIsBuilding(jobName string) <-chan bool {
+	ch := make(chan bool)
+	go func() {
+		defer close(ch)
+		jobGet := <-j.JobGet(jobName, 1)
+		if jobGet.Error != nil {
+			ch <- false
+		}
+		ch <- jobGet.Response.LastBuild.Building
+	}()
+	return ch
+}
+
 // BuildInvoke invokes simple (non-paramethrized) build of a given job
 func (j *jenkinsImpl) BuildInvoke(jobName string) <-chan *result.BuildInvoked {
 	var receiver url.URL
@@ -149,12 +205,12 @@ func (j *jenkinsImpl) BuildInvoke(jobName string) <-chan *result.BuildInvoked {
 		}
 		err := j.processor.Post(&apiRequest, &receiver)
 		if err != nil {
-			ch <- &result.BuildInvoked{nil, err}
+			ch <- &result.BuildInvoked{Response: nil, Error: err}
 		} else {
 			if resp, err := response.NewBuildInvokedFromURL(&receiver); err != nil {
-				ch <- &result.BuildInvoked{nil, err}
+				ch <- &result.BuildInvoked{Response: nil, Error: err}
 			} else {
-				ch <- &result.BuildInvoked{resp, nil}
+				ch <- &result.BuildInvoked{Response: resp, Error: nil}
 			}
 		}
 	}()
@@ -178,9 +234,9 @@ func (j *jenkinsImpl) BuildGetByNumber(jobName string, buildNumber uint) <-chan 
 		}
 		err := j.processor.GetJSON(&apiRequest, &receiver)
 		if err != nil {
-			ch <- &result.Build{nil, err}
+			ch <- &result.Build{Response: nil, Error: err}
 		} else {
-			ch <- &result.Build{&receiver, nil}
+			ch <- &result.Build{Response: &receiver, Error: nil}
 		}
 	}()
 	return ch
@@ -217,7 +273,7 @@ func (j *jenkinsImpl) BuildGetByQueueID(jobName string, queueID uint) <-chan *re
 		}
 		err = j.processor.GetJSON(&buildListRequest, &buildListReceiver)
 		if err != nil {
-			ch <- &result.Build{nil, err}
+			ch <- &result.Build{Response: nil, Error: err}
 			return
 		}
 
@@ -227,7 +283,7 @@ func (j *jenkinsImpl) BuildGetByQueueID(jobName string, queueID uint) <-chan *re
 			if queueID == item.QueueID {
 				var u64 uint64
 				if u64, err = strconv.ParseUint(item.BuildID, 10, 0); err != nil {
-					ch <- &result.Build{nil, err}
+					ch <- &result.Build{Response: nil, Error: err}
 					return
 				}
 				targetBuildNumber = uint(u64)
@@ -236,8 +292,8 @@ func (j *jenkinsImpl) BuildGetByQueueID(jobName string, queueID uint) <-chan *re
 		}
 		if targetBuildNumber == 0 {
 			ch <- &result.Build{
-				nil,
-				fmt.Errorf("Build for a job %s with a queueID %d was not found", jobName, queueID),
+				Response: nil,
+				Error:    fmt.Errorf("Build for a job %s with a queueID %d was not found", jobName, queueID),
 			}
 			return
 		}
