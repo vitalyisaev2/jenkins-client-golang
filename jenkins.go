@@ -154,6 +154,7 @@ func (j *jenkinsImpl) JobExists(jobName string) <-chan bool {
 		jobGet := <-j.JobGet(jobName, 0)
 		if jobGet.Error != nil {
 			ch <- false
+			return
 		}
 		ch <- true
 	}()
@@ -168,6 +169,7 @@ func (j *jenkinsImpl) JobInQueue(jobName string) <-chan bool {
 		jobGet := <-j.JobGet(jobName, 0)
 		if jobGet.Error != nil {
 			ch <- false
+			return
 		}
 		ch <- jobGet.Response.InQueue
 	}()
@@ -180,8 +182,10 @@ func (j *jenkinsImpl) JobIsBuilding(jobName string) <-chan bool {
 	go func() {
 		defer close(ch)
 		jobGet := <-j.JobGet(jobName, 1)
+		//fmt.Println("JobIsBuilding: ", jobGet)
 		if jobGet.Error != nil {
 			ch <- false
+			return
 		}
 		ch <- jobGet.Response.LastBuild.Building
 	}()

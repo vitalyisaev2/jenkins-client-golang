@@ -12,26 +12,9 @@ import (
 )
 
 const (
-	baseURL           string = "http://localhost:8080"
-	jenkinsAdminLogin string = "admin"
-	debug             bool   = true
-	jobConfigDefault  string = `
-<project>
-  <actions/>
-  <description></description>
-  <keepDependencies>false</keepDependencies>
-  <properties/>
-  <scm class="hudson.scm.NullSCM"/>
-  <canRoam>true</canRoam>
-  <disabled>false</disabled>
-  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
-  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
-  <triggers/>
-  <concurrentBuild>false</concurrentBuild>
-  <publishers/>
-  <buildWrappers/>
-</project>
-	`
+	baseURL            string = "http://localhost:8080"
+	jenkinsAdminLogin  string = "admin"
+	debug              bool   = true
 	jobConfigWithSleep string = `
 <project>
   <actions/>
