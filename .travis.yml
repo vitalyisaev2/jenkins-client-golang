@@ -18,6 +18,7 @@ install:
   - go get github.com/mattn/goveralls
   - go get github.com/stretchr/testify/assert
   - go get github.com/alecthomas/gometalinter
+  - gometalinter --install
 
 script:
     - go test -race -v -coverprofile=coverage.out -coverpkg=./...
