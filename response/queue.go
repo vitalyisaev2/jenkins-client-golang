@@ -1,11 +1,11 @@
 package response
 
-// Queue
+// Queue contains list of invoked builds waiting for available executor
 type Queue struct {
 	Items []QueueItem `json:"items"`
 }
 
-// QueueItem
+// QueueItem represents invoked build
 type QueueItem struct {
 	Actions                    []struct{} `json:"actions"`
 	Blocked                    bool       `json:"blocked"`

@@ -6,6 +6,8 @@ import (
 	"net/http"
 )
 
+// JenkinsAPIRequest instances are passed to requester from
+// exported high-level functions
 type JenkinsAPIRequest struct {
 	Method      string
 	Route       string
@@ -15,10 +17,13 @@ type JenkinsAPIRequest struct {
 	DumpMethod  ResponseDumpMethod
 }
 
+// JenkinsAPIFormat turns on JSON or XML responses from Jenkins API
 type JenkinsAPIFormat uint
 
 const (
+	// JenkinsAPIFormatJSON appends /api/json to request routes
 	JenkinsAPIFormatJSON JenkinsAPIFormat = iota
+	// JenkinsAPIFormatXML appends /api/xml to request routes
 	JenkinsAPIFormatXML
 )
 
@@ -32,7 +37,7 @@ func (rf *fabric) newURLString(route string, format JenkinsAPIFormat) string {
 	var URL string
 	switch format {
 	case JenkinsAPIFormatXML:
-		URL = fmt.Sprintf("%s%s", rf.baseURL, route)
+		URL = fmt.Sprintf("%s%s/api/xml", rf.baseURL, route)
 	case JenkinsAPIFormatJSON:
 		URL = fmt.Sprintf("%s%s/api/json", rf.baseURL, route)
 	}

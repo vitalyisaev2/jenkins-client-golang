@@ -30,7 +30,7 @@ const (
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>sleep 1;</command>
+      <command>sleep 3;</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers/>
@@ -82,11 +82,14 @@ func TestSimpleJobActions(t *testing.T) {
 
 	// Check that Job exists, but is not enqueued or building
 	jobExists := <-api.JobExists(jobName)
-	assert.True(t, jobExists)
+	assert.Nil(t, jobExists.Error)
+	assert.True(t, jobExists.Response)
 	jobInQueue := <-api.JobInQueue(jobName)
-	assert.False(t, jobInQueue)
+	assert.Nil(t, jobInQueue.Error)
+	assert.False(t, jobInQueue.Response)
 	jobIsBuilding := <-api.JobIsBuilding(jobName)
-	assert.False(t, jobIsBuilding)
+	assert.Nil(t, jobIsBuilding.Error)
+	assert.False(t, jobIsBuilding.Response)
 
 	// Invoke build
 	buildInvokeResult := <-api.BuildInvoke(jobName)
@@ -100,7 +103,8 @@ func TestSimpleJobActions(t *testing.T) {
 	// Wait until build will pass the queue and building process
 	for {
 		jobInQueue = <-api.JobInQueue(jobName)
-		if !jobInQueue {
+		assert.Nil(t, jobInQueue.Error)
+		if !jobInQueue.Response {
 			fmt.Println("Job has passed the queue")
 			break
 		}
@@ -110,7 +114,8 @@ func TestSimpleJobActions(t *testing.T) {
 
 	for {
 		jobIsBuilding = <-api.JobIsBuilding(jobName)
-		if !jobIsBuilding {
+		assert.Nil(t, jobIsBuilding.Error)
+		if !jobIsBuilding.Response {
 			fmt.Println("Job has been built")
 			break
 		}

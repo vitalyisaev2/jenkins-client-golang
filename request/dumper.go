@@ -39,11 +39,15 @@ func (dm *dumper) dump(httpResponse *http.Response, receiver result.Result, meth
 		return dm.defaultJSON(httpResponse, receiver)
 	case ResponseDumpHeaderLocation:
 		// Cast receiver to URL
-		if receiverURL, casted := receiver.(*url.URL); !casted {
+		var (
+			receiverURL *url.URL
+			casted      bool
+		)
+		receiverURL, casted = receiver.(*url.URL)
+		if !casted {
 			return fmt.Errorf("Cannot cast receiver to *url.URL")
-		} else {
-			return dm.headerLocation(httpResponse, receiverURL)
 		}
+		return dm.headerLocation(httpResponse, receiverURL)
 	default:
 		return fmt.Errorf("Unknown ResponseDumpMethod")
 	}
@@ -61,14 +65,11 @@ func (dm *dumper) headerLocation(httpResponse *http.Response, receiver *url.URL)
 	}
 
 	location, err := httpResponse.Location()
-	//fmt.Printf("receiver %v (%T) (%p)\n", receiver, receiver, receiver)
 	if err != nil {
 		return err
-	} else {
-		*receiver = *location
-		//fmt.Printf("receiver %v (%T) (%p)\n", receiver, receiver, receiver)
-		return nil
 	}
+	*receiver = *location
+	return nil
 }
 
 // Unmarshal JSON to a given receiver

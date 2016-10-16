@@ -32,10 +32,16 @@ type Build struct {
 	Error    error
 }
 
-// QueueID contains the queue position of invoked build job
+// BuildInvoked contains the queue position of invoked build job
 // method: POST
 // route: /job/{.jobName}/Build
 type BuildInvoked struct {
 	Response *response.BuildInvoked
+	Error    error
+}
+
+// Bool response will
+type Bool struct {
+	Response bool
 	Error    error
 }

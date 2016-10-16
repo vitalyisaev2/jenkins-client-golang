@@ -44,7 +44,7 @@ type Build struct {
 	Culprits          []BuildCuilprit `json:"culprits"`
 	Description       interface{}     `json:"description"`
 	Duration          uint            `json:"duration"`
-	EstimatedDuration uint            `json:"estimatedDuration"`
+	EstimatedDuration int             `json:"estimatedDuration"`
 	Executor          interface{}     `json:"executor"`
 	FullDisplayName   string          `json:"fullDisplayName"`
 	ID                string          `json:"id"`
@@ -108,7 +108,7 @@ type BuildAction struct {
 	URLName                 string
 }
 
-// QueueIten is returned as a part of a response headers when the build is invoked
+// BuildInvoked is returned as a part of a response headers when the build is invoked
 type BuildInvoked struct {
 	URL *url.URL
 	ID  uint
@@ -120,12 +120,15 @@ func NewBuildInvokedFromURL(URL *url.URL) (*BuildInvoked, error) {
 	pattern := regexp.MustCompile("queue/item/(?P<id>[0-9]+)/")
 	if !pattern.MatchString(URL.Path) {
 		return nil, fmt.Errorf("Returned URL (%v) doesn't match expected pattern", URL)
-	} else {
-		raw := pattern.FindStringSubmatch(URL.Path)[1]
-		if u64, err := strconv.ParseUint(raw, 10, 0); err != nil {
-			return nil, err
-		} else {
-			return &BuildInvoked{URL, uint(u64)}, nil
-		}
 	}
+	raw := pattern.FindStringSubmatch(URL.Path)[1]
+	var (
+		u64 uint64
+		err error
+	)
+	u64, err = strconv.ParseUint(raw, 10, 0)
+	if err != nil {
+		return nil, err
+	}
+	return &BuildInvoked{URL, uint(u64)}, nil
 }

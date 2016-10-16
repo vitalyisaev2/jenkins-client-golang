@@ -1,6 +1,6 @@
 package response
 
-// ResponseRoot represents common information about Jenkins node
+// Root represents common information about Jenkins node
 type Root struct {
 	AssignedLabels  []struct{}  `json:"assignedLabels"`
 	Mode            string      `json:"mode"`

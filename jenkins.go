@@ -22,11 +22,11 @@ type Jenkins interface {
 	// JobDelete deletes the requested job
 	JobDelete(string) <-chan error
 	// JobExists checks wether job with a given name exists or not
-	JobExists(string) <-chan bool
+	JobExists(string) <-chan *result.Bool
 	// JobInQueue checks whether job with a given name is in queue at the moment
-	JobInQueue(string) <-chan bool
+	JobInQueue(string) <-chan *result.Bool
 	// JobIsBuilding checks whether job with a given name is building at the moment
-	JobIsBuilding(string) <-chan bool
+	JobIsBuilding(string) <-chan *result.Bool
 	// BuildInvoke invokes simple (non-paramethrized) build of a given job
 	BuildInvoke(string) <-chan *result.BuildInvoked
 	// BuildGetByNumber returns information about particular jenkins build
@@ -147,47 +147,54 @@ func (j *jenkinsImpl) JobDelete(jobName string) <-chan error {
 }
 
 // JobExists checks wether job with a given name exists or not
-func (j *jenkinsImpl) JobExists(jobName string) <-chan bool {
-	ch := make(chan bool)
+func (j *jenkinsImpl) JobExists(jobName string) <-chan *result.Bool {
+	ch := make(chan *result.Bool)
 	go func() {
 		defer close(ch)
-		jobGet := <-j.JobGet(jobName, 0)
-		if jobGet.Error != nil {
-			ch <- false
+		info := <-j.RootInfo()
+		if info.Error != nil {
+			ch <- &result.Bool{Error: info.Error}
 			return
 		}
-		ch <- true
+		for _, job := range info.Response.Jobs {
+			if job.Name == jobName {
+				ch <- &result.Bool{Response: true, Error: nil}
+				return
+			}
+		}
+		ch <- &result.Bool{Response: false, Error: nil}
 	}()
 	return ch
 }
 
 // JobExists checks wether job with a given name exists or not
-func (j *jenkinsImpl) JobInQueue(jobName string) <-chan bool {
-	ch := make(chan bool)
+func (j *jenkinsImpl) JobInQueue(jobName string) <-chan *result.Bool {
+	ch := make(chan *result.Bool)
 	go func() {
 		defer close(ch)
 		jobGet := <-j.JobGet(jobName, 0)
 		if jobGet.Error != nil {
-			ch <- false
+			ch <- &result.Bool{Error: jobGet.Error}
 			return
 		}
-		ch <- jobGet.Response.InQueue
+		ch <- &result.Bool{Response: jobGet.Response.InQueue, Error: jobGet.Error}
 	}()
 	return ch
 }
 
 // JobIsBuilding checks whether job with a given name is building at the moment
-func (j *jenkinsImpl) JobIsBuilding(jobName string) <-chan bool {
-	ch := make(chan bool)
+func (j *jenkinsImpl) JobIsBuilding(jobName string) <-chan *result.Bool {
+	ch := make(chan *result.Bool)
 	go func() {
 		defer close(ch)
 		jobGet := <-j.JobGet(jobName, 1)
-		//fmt.Println("JobIsBuilding: ", jobGet)
 		if jobGet.Error != nil {
-			ch <- false
+			ch <- &result.Bool{Error: jobGet.Error}
 			return
 		}
-		ch <- jobGet.Response.LastBuild.Building
+		//fmt.Println("JobIsBuilding: ", jobGet.Response.LastBuild.Building)
+		//ch <- jobGet.Response.LastBuild.Building
+		ch <- &result.Bool{Response: jobGet.Response.LastBuild.Building, Error: nil}
 	}()
 	return ch
 }
