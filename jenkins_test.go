@@ -1,6 +1,7 @@
 package jenkins_test
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"os/exec"
@@ -71,7 +72,7 @@ func TestInit(t *testing.T) {
 func TestSimpleJobActions(t *testing.T) {
 	var err error
 	var jobName string = "test1"
-	jobConfig := []byte(jobConfigWithSleep)
+	jobConfig := bytes.NewBufferString(jobConfigWithSleep)
 	// Create job
 	jobCreateResult := <-api.JobCreate(jobName, jobConfig)
 	assert.NotNil(t, jobCreateResult)

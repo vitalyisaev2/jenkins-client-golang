@@ -3,6 +3,7 @@ package jenkins
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/url"
 	"strconv"
 
@@ -16,7 +17,7 @@ type Jenkins interface {
 	// RootInfo returns basic information about the node that you've connected to
 	RootInfo() <-chan *result.Root
 	// JobCreate creates new job for given name and xml configuration dumped into slice of bytes
-	JobCreate(string, []byte) <-chan *result.Job
+	JobCreate(string, io.Reader) <-chan *result.Job
 	// JobGet requests common job information for a given job name
 	JobGet(string, uint) <-chan *result.Job
 	// JobDelete deletes the requested job
@@ -65,11 +66,10 @@ func (j *jenkinsImpl) RootInfo() <-chan *result.Root {
 }
 
 // JobCreate creates new job for given name and xml configuration dumped into slice of bytes
-func (j *jenkinsImpl) JobCreate(jobName string, jobConfig []byte) <-chan *result.Job {
+func (j *jenkinsImpl) JobCreate(jobName string, jobConfig io.Reader) <-chan *result.Job {
 	var err error
 	params := make(map[string]string)
 	params["name"] = jobName
-	body := bytes.NewBuffer(jobConfig)
 	ch := make(chan *result.Job)
 
 	go func() {
@@ -78,7 +78,7 @@ func (j *jenkinsImpl) JobCreate(jobName string, jobConfig []byte) <-chan *result
 			Method:      "POST",
 			Route:       "/createItem",
 			Format:      request.JenkinsAPIFormatJSON,
-			Body:        body,
+			Body:        jobConfig,
 			QueryParams: params,
 			DumpMethod:  request.ResponseDumpDefaultJSON,
 		}
