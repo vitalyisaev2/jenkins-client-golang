@@ -2,6 +2,7 @@ package jenkins_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os/exec"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/vitalyisaev2/jenkins-client-golang"
+	"github.com/vitalyisaev2/jenkins-client-golang/response"
 )
 
 const (
@@ -73,13 +75,13 @@ func TestSimpleJobActions(t *testing.T) {
 	var err error
 	var jobName string = "test1"
 	jobConfig := bytes.NewBufferString(jobConfigWithSleep)
+
 	// Create job
 	jobCreateResult := <-api.JobCreate(jobName, jobConfig)
 	assert.NotNil(t, jobCreateResult)
 	assert.NotNil(t, jobCreateResult.Response)
 	assert.Nil(t, jobCreateResult.Error)
 	assert.Equal(t, jobName, jobCreateResult.Response.DisplayName)
-	assert.Equal(t, fmt.Sprintf("%s/job/%s/", baseURL, jobName), jobCreateResult.Response.URL)
 
 	// Check that Job exists, but is not enqueued or building
 	jobExists := <-api.JobExists(jobName)
@@ -124,9 +126,6 @@ func TestSimpleJobActions(t *testing.T) {
 		time.Sleep(1 * time.Second)
 	}
 
-	// After
-	//time.Sleep(15 * time.Second)
-
 	// Get job information
 	jobGetResult := <-api.JobGet(jobName, 0)
 	assert.NotNil(t, jobGetResult)
@@ -136,7 +135,6 @@ func TestSimpleJobActions(t *testing.T) {
 	// Check some of common job information
 	job := jobGetResult.Response
 	assert.Equal(t, jobName, job.DisplayName)
-	assert.Equal(t, fmt.Sprintf("%s/job/%s/", baseURL, jobName), job.URL)
 
 	// Check some of build-related job information
 	assert.False(t, job.InQueue)
@@ -169,5 +167,16 @@ func TestSimpleJobActions(t *testing.T) {
 
 	// Delete job
 	err = <-api.JobDelete(jobName)
+	assert.Nil(t, err)
+}
+
+func TestComplicatedUnmarshalling(t *testing.T) {
+	s := `{"_class":"hudson.model.FreeStyleProject","actions":[{"_class":"hudson.model.ParametersDefinitionProperty","parameterDefinitions":[{"_class":"hudson.model.BooleanParameterDefinition","defaultParameterValue":{"_class":"hudson.model.BooleanParameterValue","name":"x","value":true},"description":"","name":"x","type":"BooleanParameterDefinition"}]},{"_class":"com.cloudbees.plugins.credentials.ViewCredentialsAction","stores":{}}],"description":"","displayName":"BuildControl_A","displayNameOrNull":null,"name":"BuildControl_A","url":"http://kiki:8080/job/BuildControl_A/","buildable":true,"builds":[{"_class":"hudson.model.FreeStyleBuild","actions":[{"_class":"hudson.model.ParametersAction","parameters":[{"_class":"hudson.model.BooleanParameterValue","name":"x","value":true}]},{"_class":"hudson.model.CauseAction","causes":[{"_class":"hudson.model.Cause$UserIdCause","shortDescription":"Started by user admin","userId":"admin","userName":"admin"}]}],"artifacts":[],"building":false,"description":null,"displayName":"#5","duration":5017,"estimatedDuration":5021,"executor":null,"fullDisplayName":"BuildControl_A #5","id":"5","keepLog":false,"number":5,"queueId":7,"result":"SUCCESS","timestamp":1476801392270,"url":"http://kiki:8080/job/BuildControl_A/5/","builtOn":"","changeSet":{"_class":"hudson.scm.EmptyChangeLogSet","items":[],"kind":null},"culprits":[]},{"_class":"hudson.model.FreeStyleBuild","actions":[{"_class":"hudson.model.ParametersAction","parameters":[{"_class":"hudson.model.BooleanParameterValue","name":"x","value":true}]},{"_class":"hudson.model.CauseAction","causes":[{"_class":"hudson.model.Cause$UserIdCause","shortDescription":"Started by user admin","userId":"admin","userName":"admin"}]}],"artifacts":[],"building":false,"description":null,"displayName":"#4","duration":5034,"estimatedDuration":5021,"executor":null,"fullDisplayName":"BuildControl_A #4","id":"4","keepLog":false,"number":4,"queueId":6,"result":"FAILURE","timestamp":1476801340504,"url":"http://kiki:8080/job/BuildControl_A/4/","builtOn":"","changeSet":{"_class":"hudson.scm.EmptyChangeLogSet","items":[],"kind":null},"culprits":[]},{"_class":"hudson.model.FreeStyleBuild","actions":[{"_class":"hudson.model.ParametersAction","parameters":[{"_class":"hudson.model.BooleanParameterValue","name":"x","value":true}]},{"_class":"hudson.model.CauseAction","causes":[{"_class":"hudson.model.Cause$UserIdCause","shortDescription":"Started by user admin","userId":"admin","userName":"admin"}]}],"artifacts":[],"building":false,"description":null,"displayName":"#3","duration":5012,"estimatedDuration":5021,"executor":null,"fullDisplayName":"BuildControl_A #3","id":"3","keepLog":false,"number":3,"queueId":5,"result":"FAILURE","timestamp":1476801224113,"url":"http://kiki:8080/job/BuildControl_A/3/","builtOn":"","changeSet":{"_class":"hudson.scm.EmptyChangeLogSet","items":[],"kind":null},"culprits":[]},{"_class":"hudson.model.FreeStyleBuild","actions":[{"_class":"hudson.model.CauseAction","causes":[{"_class":"hudson.model.Cause$UserIdCause","shortDescription":"Started by user admin","userId":"admin","userName":"admin"}]}],"artifacts":[],"building":false,"description":null,"displayName":"#2","duration":5017,"estimatedDuration":5021,"executor":null,"fullDisplayName":"BuildControl_A #2","id":"2","keepLog":false,"number":2,"queueId":4,"result":"FAILURE","timestamp":1476801188749,"url":"http://kiki:8080/job/BuildControl_A/2/","builtOn":"","changeSet":{"_class":"hudson.scm.EmptyChangeLogSet","items":[],"kind":null},"culprits":[]},{"_class":"hudson.model.FreeStyleBuild","actions":[{"_class":"hudson.model.CauseAction","causes":[{"_class":"hudson.model.Cause$UserIdCause","shortDescription":"Started by user admin","userId":"admin","userName":"admin"}]}],"artifacts":[],"building":false,"description":null,"displayName":"#1","duration":5012,"estimatedDuration":5021,"executor":null,"fullDisplayName":"BuildControl_A #1","id":"1","keepLog":false,"number":1,"queueId":3,"result":"FAILURE","timestamp":1476800867225,"url":"http://kiki:8080/job/BuildControl_A/1/","builtOn":"","changeSet":{"_class":"hudson.scm.EmptyChangeLogSet","items":[],"kind":null},"culprits":[]}],"color":"blue","firstBuild":{"_class":"hudson.model.FreeStyleBuild","actions":[{"_class":"hudson.model.CauseAction","causes":[{"_class":"hudson.model.Cause$UserIdCause","shortDescription":"Started by user admin","userId":"admin","userName":"admin"}]}],"artifacts":[],"building":false,"description":null,"displayName":"#1","duration":5012,"estimatedDuration":5021,"executor":null,"fullDisplayName":"BuildControl_A #1","id":"1","keepLog":false,"number":1,"queueId":3,"result":"FAILURE","timestamp":1476800867225,"url":"http://kiki:8080/job/BuildControl_A/1/","builtOn":"","changeSet":{"_class":"hudson.scm.EmptyChangeLogSet","items":[],"kind":null},"culprits":[]},"healthReport":[{"description":"Build stability: 4 out of the last 5 builds failed.","iconClassName":"icon-health-00to19","iconUrl":"health-00to19.png","score":20}],"inQueue":false,"keepDependencies":false,"lastBuild":{"_class":"hudson.model.FreeStyleBuild","actions":[{"_class":"hudson.model.ParametersAction","parameters":[{"_class":"hudson.model.BooleanParameterValue","name":"x","value":true}]},{"_class":"hudson.model.CauseAction","causes":[{"_class":"hudson.model.Cause$UserIdCause","shortDescription":"Started by user admin","userId":"admin","userName":"admin"}]}],"artifacts":[],"building":false,"description":null,"displayName":"#5","duration":5017,"estimatedDuration":5021,"executor":null,"fullDisplayName":"BuildControl_A #5","id":"5","keepLog":false,"number":5,"queueId":7,"result":"SUCCESS","timestamp":1476801392270,"url":"http://kiki:8080/job/BuildControl_A/5/","builtOn":"","changeSet":{"_class":"hudson.scm.EmptyChangeLogSet","items":[],"kind":null},"culprits":[]},"lastCompletedBuild":{"_class":"hudson.model.FreeStyleBuild","actions":[{"_class":"hudson.model.ParametersAction","parameters":[{"_class":"hudson.model.BooleanParameterValue","name":"x","value":true}]},{"_class":"hudson.model.CauseAction","causes":[{"_class":"hudson.model.Cause$UserIdCause","shortDescription":"Started by user admin","userId":"admin","userName":"admin"}]}],"artifacts":[],"building":false,"description":null,"displayName":"#5","duration":5017,"estimatedDuration":5021,"executor":null,"fullDisplayName":"BuildControl_A #5","id":"5","keepLog":false,"number":5,"queueId":7,"result":"SUCCESS","timestamp":1476801392270,"url":"http://kiki:8080/job/BuildControl_A/5/","builtOn":"","changeSet":{"_class":"hudson.scm.EmptyChangeLogSet","items":[],"kind":null},"culprits":[]},"lastFailedBuild":{"_class":"hudson.model.FreeStyleBuild","actions":[{"_class":"hudson.model.ParametersAction","parameters":[{"_class":"hudson.model.BooleanParameterValue","name":"x","value":true}]},{"_class":"hudson.model.CauseAction","causes":[{"_class":"hudson.model.Cause$UserIdCause","shortDescription":"Started by user admin","userId":"admin","userName":"admin"}]}],"artifacts":[],"building":false,"description":null,"displayName":"#4","duration":5034,"estimatedDuration":5021,"executor":null,"fullDisplayName":"BuildControl_A #4","id":"4","keepLog":false,"number":4,"queueId":6,"result":"FAILURE","timestamp":1476801340504,"url":"http://kiki:8080/job/BuildControl_A/4/","builtOn":"","changeSet":{"_class":"hudson.scm.EmptyChangeLogSet","items":[],"kind":null},"culprits":[]},"lastStableBuild":{"_class":"hudson.model.FreeStyleBuild","actions":[{"_class":"hudson.model.ParametersAction","parameters":[{"_class":"hudson.model.BooleanParameterValue","name":"x","value":true}]},{"_class":"hudson.model.CauseAction","causes":[{"_class":"hudson.model.Cause$UserIdCause","shortDescription":"Started by user admin","userId":"admin","userName":"admin"}]}],"artifacts":[],"building":false,"description":null,"displayName":"#5","duration":5017,"estimatedDuration":5021,"executor":null,"fullDisplayName":"BuildControl_A #5","id":"5","keepLog":false,"number":5,"queueId":7,"result":"SUCCESS","timestamp":1476801392270,"url":"http://kiki:8080/job/BuildControl_A/5/","builtOn":"","changeSet":{"_class":"hudson.scm.EmptyChangeLogSet","items":[],"kind":null},"culprits":[]},"lastSuccessfulBuild":{"_class":"hudson.model.FreeStyleBuild","actions":[{"_class":"hudson.model.ParametersAction","parameters":[{"_class":"hudson.model.BooleanParameterValue","name":"x","value":true}]},{"_class":"hudson.model.CauseAction","causes":[{"_class":"hudson.model.Cause$UserIdCause","shortDescription":"Started by user admin","userId":"admin","userName":"admin"}]}],"artifacts":[],"building":false,"description":null,"displayName":"#5","duration":5017,"estimatedDuration":5021,"executor":null,"fullDisplayName":"BuildControl_A #5","id":"5","keepLog":false,"number":5,"queueId":7,"result":"SUCCESS","timestamp":1476801392270,"url":"http://kiki:8080/job/BuildControl_A/5/","builtOn":"","changeSet":{"_class":"hudson.scm.EmptyChangeLogSet","items":[],"kind":null},"culprits":[]},"lastUnstableBuild":null,"lastUnsuccessfulBuild":{"_class":"hudson.model.FreeStyleBuild","actions":[{"_class":"hudson.model.ParametersAction","parameters":[{"_class":"hudson.model.BooleanParameterValue","name":"x","value":true}]},{"_class":"hudson.model.CauseAction","causes":[{"_class":"hudson.model.Cause$UserIdCause","shortDescription":"Started by user admin","userId":"admin","userName":"admin"}]}],"artifacts":[],"building":false,"description":null,"displayName":"#4","duration":5034,"estimatedDuration":5021,"executor":null,"fullDisplayName":"BuildControl_A #4","id":"4","keepLog":false,"number":4,"queueId":6,"result":"FAILURE","timestamp":1476801340504,"url":"http://kiki:8080/job/BuildControl_A/4/","builtOn":"","changeSet":{"_class":"hudson.scm.EmptyChangeLogSet","items":[],"kind":null},"culprits":[]},"nextBuildNumber":6,"property":[{"_class":"hudson.model.ParametersDefinitionProperty","parameterDefinitions":[{"_class":"hudson.model.BooleanParameterDefinition","defaultParameterValue":{"_class":"hudson.model.BooleanParameterValue","name":"x","value":true},"description":"","name":"x","type":"BooleanParameterDefinition"}]}],"queueItem":null,"concurrentBuild":false,"downstreamProjects":[],"scm":{"_class":"hudson.scm.NullSCM","browser":null,"type":"hudson.scm.NullSCM"},"upstreamProjects":[]}`
+	var receiver response.Job
+	buf := bytes.NewBufferString(s)
+	err := json.NewDecoder(buf).Decode(&receiver)
+	if ute, ok := err.(*json.UnmarshalTypeError); ok {
+		fmt.Printf("UnmarshalTypeError %v - %v - %v", ute.Value, ute.Type, ute.Offset)
+	}
 	assert.Nil(t, err)
 }

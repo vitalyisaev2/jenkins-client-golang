@@ -64,7 +64,7 @@ type Build struct {
 // BuildParameter ???
 type BuildParameter struct {
 	Name  string
-	Value string
+	Value bool
 }
 
 // BuildBranch ???
