@@ -1,4 +1,4 @@
-package response
+package jenkins
 
 // Queue contains list of invoked builds waiting for available executor
 type Queue struct {

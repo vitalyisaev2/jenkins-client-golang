@@ -6,15 +6,14 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 
-	"github.com/vitalyisaev2/jenkins-client-golang/result"
 	"golang.org/x/net/context/ctxhttp"
 )
 
 // Processor wraps routines related to the HTTP layer of interaction with Jenkins API
 type Processor interface {
-	GetJSON(*JenkinsAPIRequest, result.Result) error
-	Post(*JenkinsAPIRequest, result.Result) error
-	PostXML(*JenkinsAPIRequest, result.Result) error
+	GetJSON(*JenkinsAPIRequest, interface{}) error
+	Post(*JenkinsAPIRequest, interface{}) error
+	PostXML(*JenkinsAPIRequest, interface{}) error
 }
 
 type defaultProcessor struct {
@@ -24,7 +23,7 @@ type defaultProcessor struct {
 	debug  bool
 }
 
-func (p *defaultProcessor) GetJSON(apiRequest *JenkinsAPIRequest, receiver result.Result) error {
+func (p *defaultProcessor) GetJSON(apiRequest *JenkinsAPIRequest, receiver interface{}) error {
 	httpRequest, err := p.fb.newHTTPRequest(apiRequest)
 	if err != nil {
 		return err
@@ -33,7 +32,7 @@ func (p *defaultProcessor) GetJSON(apiRequest *JenkinsAPIRequest, receiver resul
 	return p.call(httpRequest, receiver, apiRequest.DumpMethod, true)
 }
 
-func (p *defaultProcessor) Post(apiRequest *JenkinsAPIRequest, receiver result.Result) error {
+func (p *defaultProcessor) Post(apiRequest *JenkinsAPIRequest, receiver interface{}) error {
 	httpRequest, err := p.fb.newHTTPRequest(apiRequest)
 	if err != nil {
 		return err
@@ -41,7 +40,7 @@ func (p *defaultProcessor) Post(apiRequest *JenkinsAPIRequest, receiver result.R
 	return p.call(httpRequest, receiver, apiRequest.DumpMethod, true)
 }
 
-func (p *defaultProcessor) PostXML(apiRequest *JenkinsAPIRequest, receiver result.Result) error {
+func (p *defaultProcessor) PostXML(apiRequest *JenkinsAPIRequest, receiver interface{}) error {
 	httpRequest, err := p.fb.newHTTPRequest(apiRequest)
 	if err != nil {
 		return err
@@ -81,7 +80,7 @@ func (p *defaultProcessor) setCrumbs(httpRequest *http.Request) error {
 // Emit HTTP request to Jenkins endpoint and
 func (p *defaultProcessor) call(
 	req *http.Request,
-	receiver result.Result,
+	receiver interface{},
 	dumpMethod ResponseDumpMethod,
 	setCrumbs bool,
 ) error {

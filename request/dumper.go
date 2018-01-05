@@ -7,8 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-
-	"github.com/vitalyisaev2/jenkins-client-golang/result"
 )
 
 // ResponseDumpMethod allows to specify how exactly response from Jenkins API will be dumped to receiver
@@ -29,7 +27,7 @@ type dumper struct {
 	debug bool
 }
 
-func (dm *dumper) dump(httpResponse *http.Response, receiver result.Result, method ResponseDumpMethod) error {
+func (dm *dumper) dump(httpResponse *http.Response, receiver interface{}, method ResponseDumpMethod) error {
 
 	// Select dump method and run it
 	switch method {
@@ -73,7 +71,7 @@ func (dm *dumper) headerLocation(httpResponse *http.Response, receiver *url.URL)
 }
 
 // Unmarshal JSON to a given receiver
-func (dm *dumper) defaultJSON(httpResponse *http.Response, receiver result.Result) error {
+func (dm *dumper) defaultJSON(httpResponse *http.Response, receiver interface{}) error {
 
 	// Check response status
 	switch httpResponse.StatusCode {

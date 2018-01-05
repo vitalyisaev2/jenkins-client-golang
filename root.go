@@ -1,4 +1,4 @@
-package response
+package jenkins
 
 // Root represents common information about Jenkins node
 type Root struct {

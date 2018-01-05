@@ -1,4 +1,4 @@
-package response
+package jenkins
 
 // Job represents the result of job API call
 type Job struct {
