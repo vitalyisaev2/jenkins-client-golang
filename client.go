@@ -175,9 +175,10 @@ func (c *defaultClient) BuildGetByQueueID(ctx context.Context, name string, queu
 	// 1. Request list of brief build descriptions of a particular job
 	var (
 		receiver buildList
-		params   map[string]string
+		params   = map[string]string{
+			"tree": "builds[id,queueId,url]",
+		}
 	)
-	params["tree"] = "builds[id,queueId,url]"
 
 	apiRequest := &request.JenkinsAPIRequest{
 		Method:      "GET",
