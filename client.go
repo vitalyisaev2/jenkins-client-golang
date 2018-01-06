@@ -1,7 +1,6 @@
 package jenkins
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net/url"
@@ -15,8 +14,8 @@ import (
 type Client interface {
 	// RootInfo returns basic information about the node that you've connected to
 	RootInfo(ctx context.Context) (*Root, error)
-	// JobCreate creates new job for given name and xml configuration dumped into byte slice
-	JobCreate(ctx context.Context, name string, config []byte) (*Job, error)
+	// JobCreate creates new job with  given name and xml configuration dumped into string
+	JobCreate(ctx context.Context, name, config string) (*Job, error)
 	// JobGet requests common job information for a given job name
 	JobGet(ctx context.Context, name string, depth int) (*Job, error)
 	// JobDelete deletes the requested job
@@ -51,7 +50,7 @@ func (c *defaultClient) RootInfo(ctx context.Context) (*Root, error) {
 	return &receiver, err
 }
 
-func (c *defaultClient) JobCreate(ctx context.Context, name string, config []byte) (*Job, error) {
+func (c *defaultClient) JobCreate(ctx context.Context, name, config string) (*Job, error) {
 	params := map[string]string{
 		"name": name,
 	}
@@ -60,7 +59,7 @@ func (c *defaultClient) JobCreate(ctx context.Context, name string, config []byt
 		Method:      "POST",
 		Route:       "/createItem",
 		Format:      request.JenkinsAPIFormatJSON,
-		Body:        bytes.NewReader(config),
+		Body:        strings.NewReader(config),
 		QueryParams: params,
 		DumpMethod:  request.ResponseDumpDefaultJSON,
 	}
