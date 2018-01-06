@@ -16,7 +16,7 @@ type Job struct {
 		Description   string `json:"description"`
 		IconClassName string `json:"iconClassName"`
 		IconURL       string `json:"iconUrl"`
-		Score         uint   `json:"score"`
+		Score         int    `json:"score"`
 	} `json:"healthReport"`
 	InQueue               bool   `json:"inQueue"`
 	KeepDependencies      bool   `json:"keepDependencies"`
@@ -28,7 +28,7 @@ type Job struct {
 	LastUnstableBuild     Build  `json:"lastUnstableBuild"`
 	LastUnsuccessfulBuild Build  `json:"lastUnsuccessfulBuild"`
 	Name                  string `json:"name"`
-	NextBuildNumber       uint   `json:"nextBuildNumber"`
+	NextBuildNumber       int    `json:"nextBuildNumber"`
 	Property              []struct {
 		ParameterDefinitions []JobParameterDefinition `json:"parameterDefinitions"`
 	} `json:"property"`
@@ -47,7 +47,7 @@ type JobBrief struct {
 
 // JobBuildBrief is a short representation of a common Jenkins build used in various API responses
 type JobBuildBrief struct {
-	Number uint
+	Number int
 	URL    string
 }
 

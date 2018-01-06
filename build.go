@@ -33,7 +33,7 @@ type Build struct {
 				EditType string `json:"editType"`
 				File     string `json:"file"`
 			} `json:"paths"`
-			Timestamp uint `json:"timestamp"`
+			Timestamp int `json:"timestamp"`
 		} `json:"items"`
 		Kind      string `json:"kind"`
 		Revisions []struct {
@@ -43,20 +43,20 @@ type Build struct {
 	} `json:"changeSet"`
 	Culprits          []BuildCuilprit `json:"culprits"`
 	Description       interface{}     `json:"description"`
-	Duration          uint            `json:"duration"`
+	Duration          int             `json:"duration"`
 	EstimatedDuration int             `json:"estimatedDuration"`
 	Executor          interface{}     `json:"executor"`
 	FullDisplayName   string          `json:"fullDisplayName"`
 	ID                string          `json:"id"`
 	KeepLog           bool            `json:"keepLog"`
-	Number            uint            `json:"number"`
+	Number            int             `json:"number"`
 	Result            string          `json:"result"`
-	Timestamp         uint            `json:"timestamp"`
+	Timestamp         int             `json:"timestamp"`
 	URL               string          `json:"url"`
 	MavenArtifacts    interface{}     `json:"mavenArtifacts"`
 	MavenVersionUsed  string          `json:"mavenVersionUsed"`
 	Runs              []struct {
-		Number uint
+		Number int
 		URL    string
 	} `json:"runs"`
 }
@@ -81,7 +81,7 @@ type BuildRevision struct {
 
 // Builds ???
 type Builds struct {
-	BuildNumber uint          `json:"buildNumber"`
+	BuildNumber int           `json:"buildNumber"`
 	BuildResult interface{}   `json:"buildResult"`
 	Marked      BuildRevision `json:"marked"`
 	Revision    BuildRevision `json:"revision"`
@@ -104,14 +104,14 @@ type BuildAction struct {
 	MercurialNodeName       string                   `json:"mercurialNodeName"`
 	MercurialRevisionNumber string                   `json:"mercurialRevisionNumber"`
 	Subdir                  interface{}              `json:"subdir"`
-	TotalCount              uint
+	TotalCount              int
 	URLName                 string
 }
 
 // BuildInvoked is returned as a part of a response headers when the build is invoked
 type BuildInvoked struct {
 	URL *url.URL
-	ID  uint
+	ID  int
 }
 
 // NewBuildInvokedFromURL returns struct with URL and parsed location
@@ -122,13 +122,9 @@ func NewBuildInvokedFromURL(URL *url.URL) (*BuildInvoked, error) {
 		return nil, fmt.Errorf("Returned URL (%v) doesn't match expected pattern", URL)
 	}
 	raw := pattern.FindStringSubmatch(URL.Path)[1]
-	var (
-		u64 uint64
-		err error
-	)
-	u64, err = strconv.ParseUint(raw, 10, 0)
+	buildID, err := strconv.Atoi(raw)
 	if err != nil {
 		return nil, err
 	}
-	return &BuildInvoked{URL, uint(u64)}, nil
+	return &BuildInvoked{URL: URL, ID: buildID}, nil
 }
