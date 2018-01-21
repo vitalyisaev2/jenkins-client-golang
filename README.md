@@ -15,7 +15,7 @@ password := "password"
 // Use true/false in case if you want additional debug information to be enabled/disabled
 debug := false
 
-api, err := jenkins.NewJenkins(url, login, password, debug)
+api, err := jenkins.NewClient(url, login, password, debug)
 if err != nil {
     return err
 }

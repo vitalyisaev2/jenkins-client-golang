@@ -1,4 +1,4 @@
-package response
+package jenkins
 
 // Queue contains list of invoked builds waiting for available executor
 type Queue struct {
@@ -10,9 +10,9 @@ type QueueItem struct {
 	Actions                    []struct{} `json:"actions"`
 	Blocked                    bool       `json:"blocked"`
 	Buildable                  bool       `json:"buildable"`
-	BuildableStartMilliseconds uint       `json:"buildableStartMilliseconds"`
-	ID                         uint       `json:"id"`
-	InQueueSince               uint       `json:"inQueueSince"`
+	BuildableStartMilliseconds int        `json:"buildableStartMilliseconds"`
+	ID                         int        `json:"id"`
+	InQueueSince               int        `json:"inQueueSince"`
 	Params                     string     `json:"params"`
 	Pending                    bool       `json:"pending"`
 	Stuck                      bool       `json:"stuck"`

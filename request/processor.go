@@ -1,65 +1,67 @@
 package request
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/cookiejar"
 
-	"github.com/vitalyisaev2/jenkins-client-golang/result"
+	"golang.org/x/net/context/ctxhttp"
 )
 
 // Processor wraps routines related to the HTTP layer of interaction with Jenkins API
 type Processor interface {
-	GetJSON(*JenkinsAPIRequest, result.Result) error
-	Post(*JenkinsAPIRequest, result.Result) error
-	PostXML(*JenkinsAPIRequest, result.Result) error
+	GetJSON(*JenkinsAPIRequest, interface{}) error
+	Post(*JenkinsAPIRequest, interface{}) error
+	PostXML(*JenkinsAPIRequest, interface{}) error
 }
 
-type processorImpl struct {
+type defaultProcessor struct {
 	client *http.Client
 	fb     *fabric
 	dm     *dumper
 	debug  bool
 }
 
-func (processor *processorImpl) GetJSON(apiRequest *JenkinsAPIRequest, receiver result.Result) error {
-	httpRequest, err := processor.fb.newHTTPRequest(apiRequest)
+func (p *defaultProcessor) GetJSON(apiRequest *JenkinsAPIRequest, receiver interface{}) error {
+	httpRequest, err := p.fb.newHTTPRequest(apiRequest)
 	if err != nil {
 		return err
 	}
 	httpRequest.Header.Add("Content-Type", "application/json")
-	return processor.processRequest(httpRequest, receiver, apiRequest.DumpMethod, true)
+	return p.call(httpRequest, receiver, apiRequest.DumpMethod, true)
 }
 
-func (processor *processorImpl) Post(apiRequest *JenkinsAPIRequest, receiver result.Result) error {
-	httpRequest, err := processor.fb.newHTTPRequest(apiRequest)
+func (p *defaultProcessor) Post(apiRequest *JenkinsAPIRequest, receiver interface{}) error {
+	httpRequest, err := p.fb.newHTTPRequest(apiRequest)
 	if err != nil {
 		return err
 	}
-	return processor.processRequest(httpRequest, receiver, apiRequest.DumpMethod, true)
+	return p.call(httpRequest, receiver, apiRequest.DumpMethod, true)
 }
 
-func (processor *processorImpl) PostXML(apiRequest *JenkinsAPIRequest, receiver result.Result) error {
-	httpRequest, err := processor.fb.newHTTPRequest(apiRequest)
+func (p *defaultProcessor) PostXML(apiRequest *JenkinsAPIRequest, receiver interface{}) error {
+	httpRequest, err := p.fb.newHTTPRequest(apiRequest)
 	if err != nil {
 		return err
 	}
 	httpRequest.Header.Add("Content-Type", "application/xml")
-	return processor.processRequest(httpRequest, receiver, apiRequest.DumpMethod, true)
+	return p.call(httpRequest, receiver, apiRequest.DumpMethod, true)
 }
 
-// Make HTTP Request match Jenkins CSRF protection requirements (enabled by default in 2.x)
-func (processor *processorImpl) setCrumbs(httpRequest *http.Request) error {
+// Make HTTP Request match Jenkins CSRF protection requirements
+// (enabled by default in 2.x)
+func (p *defaultProcessor) setCrumbs(httpRequest *http.Request) error {
 	var err error
 	var crumbRequest *http.Request
 
-	crumbRequest, err = processor.fb.newCrumbRequest()
+	crumbRequest, err = p.fb.newCrumbRequest()
 	if err != nil {
 		return err
 	}
 	receiver := make(map[string]string)
 
-	err = processor.processRequest(crumbRequest, &receiver, ResponseDumpDefaultJSON, false)
+	err = p.call(crumbRequest, &receiver, ResponseDumpDefaultJSON, false)
 	if err != nil {
 		return err
 	}
@@ -75,56 +77,55 @@ func (processor *processorImpl) setCrumbs(httpRequest *http.Request) error {
 	return nil
 }
 
-// Enqueue HTTP request to client
-func (processor *processorImpl) processRequest(httpRequest *http.Request, receiver result.Result, dumpMethod ResponseDumpMethod, setCrumbs bool) error {
-	var err error
-	var httpResponse *http.Response
+// Emit HTTP request to Jenkins endpoint and
+func (p *defaultProcessor) call(
+	req *http.Request,
+	receiver interface{},
+	dumpMethod ResponseDumpMethod,
+	setCrumbs bool,
+) error {
 
-	if processor.debug {
-		fmt.Printf("Request URL: %s\n", httpRequest.URL)
+	if p.debug {
+		fmt.Printf("Request URL: %s\n", req.URL)
 	}
 
 	// Set header preventing CSRF attacs if necessary
 	if setCrumbs {
-		err = processor.setCrumbs(httpRequest)
-		if err != nil {
+		if err := p.setCrumbs(req); err != nil {
 			return err
 		}
 	}
 
 	// Perform HTTP request
-	httpResponse, err = processor.client.Do(httpRequest)
+	resp, err := ctxhttp.Do(context.Background(), p.client, req)
 	if err != nil {
 		return err
 	}
 
-	return processor.dm.dump(httpResponse, receiver, dumpMethod)
+	return p.dm.dump(resp, receiver, dumpMethod)
 }
 
-// NewProcessor instantiates Processor - a wrapper for http.Client that aware about Jenkins stuff
-func NewProcessor(baseURL string, username string, password string, debug bool) (Processor, error) {
-
-	var (
-		err       error
-		cookieJar *cookiejar.Jar
-		transport *http.Transport
-		client    *http.Client
-		fb        *fabric
-		dm        *dumper
-	)
+// NewProcessor instantiates Processor - a wrapper for http.Client
+// that aware about Jenkins features
+func NewProcessor(
+	baseURL string,
+	username string,
+	password string,
+	debug bool,
+) (Processor, error) {
 
 	// Build custom http/client
-	transport = &http.Transport{
+	transport := &http.Transport{
 		MaxIdleConnsPerHost: 16,
 	}
 
 	// Construct cookie storage
-	cookieJar, err = cookiejar.New(nil)
+	cookieJar, err := cookiejar.New(nil)
 	if err != nil {
 		return nil, err
 	}
 
-	client = &http.Client{
+	client := &http.Client{
 		Transport: transport,
 		Jar:       cookieJar,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -134,10 +135,10 @@ func NewProcessor(baseURL string, username string, password string, debug bool) 
 	}
 
 	// fabric creates various HTTP requests
-	fb = &fabric{baseURL, username, password}
+	fb := &fabric{baseURL, username, password}
 
 	// dumper deserializes HTTP responses to structs in various ways
-	dm = &dumper{debug}
+	dm := &dumper{debug}
 
-	return &processorImpl{client, fb, dm, debug}, nil
+	return &defaultProcessor{client, fb, dm, debug}, nil
 }

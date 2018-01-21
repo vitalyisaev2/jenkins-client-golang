@@ -1,4 +1,4 @@
-package response
+package jenkins
 
 // PrimaryView ???
 type PrimaryView struct {
